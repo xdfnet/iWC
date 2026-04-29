@@ -33,6 +33,8 @@ func main() {
 		run()
 	case "stop":
 		runStop()
+	case "restart":
+		runRestart()
 	case "wechat", "weixin":
 		runWechatCmd(os.Args[2:])
 	case "autostart":
@@ -54,6 +56,7 @@ func printUsage() {
 用法:
   icc start             启动服务
   icc stop              停止服务
+  icc restart           重启服务
   icc wechat setup      扫码登录微信
   icc autostart on      设置开机自启
   icc autostart off     取消开机自启
@@ -84,11 +87,17 @@ func run() {
 		cfg.WeChat.BaseURL,
 		cfg.WeChat.AllowFrom,
 		cfg.WeChat.LongPollMS,
+		cfg.System.DataDir,
 	)
 
 	agent := claude.NewAgent(cfg.Claude.WorkDir, cfg.Claude.CLIPath)
 
 	eng := engine.New(wx, agent)
+	if cfg.System.DataDir != "" {
+		wechatDir := filepath.Join(cfg.System.DataDir, "wechat")
+		os.MkdirAll(wechatDir, 0755)
+		eng.SetSessionsPath(filepath.Join(wechatDir, "sessions.json"))
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -144,6 +153,14 @@ func runStop() {
 	}
 
 	fmt.Println("✅ iCC 已停止")
+}
+
+// --- restart ---
+
+func runRestart() {
+	runStop()
+	time.Sleep(500 * time.Millisecond)
+	run()
 }
 
 // --- 开机自启 ---

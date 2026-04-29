@@ -36,12 +36,12 @@ type getUpdatesReq struct {
 }
 
 type getUpdatesResp struct {
-	Ret                  int            `json:"ret"`
-	Errcode              int            `json:"errcode"`
-	Errmsg               string         `json:"errmsg"`
+	Ret                  int             `json:"ret"`
+	Errcode              int             `json:"errcode"`
+	Errmsg               string          `json:"errmsg"`
 	Msgs                 []weixinMessage `json:"msgs"`
-	GetUpdatesBuf        string         `json:"get_updates_buf"`
-	LongpollingTimeoutMs int            `json:"longpolling_timeout_ms"`
+	GetUpdatesBuf        string          `json:"get_updates_buf"`
+	LongpollingTimeoutMs int             `json:"longpolling_timeout_ms"`
 }
 
 type sendMessageReq struct {
@@ -53,6 +53,26 @@ type sendMessageResp struct {
 	Ret     int    `json:"ret"`
 	Errcode int    `json:"errcode"`
 	Errmsg  string `json:"errmsg"`
+}
+
+type getConfigReq struct {
+	UserID       string   `json:"ilink_user_id"`
+	ContextToken string   `json:"context_token,omitempty"`
+	BaseInfo     baseInfo `json:"base_info"`
+}
+
+type getConfigResp struct {
+	Ret          int    `json:"ret"`
+	Errcode      int    `json:"errcode"`
+	Errmsg       string `json:"errmsg"`
+	TypingTicket string `json:"typing_ticket"`
+}
+
+type sendTypingReq struct {
+	IlinkUserID  string   `json:"ilink_user_id"`
+	TypingTicket string   `json:"typing_ticket"`
+	Status       int      `json:"status"`
+	BaseInfo     baseInfo `json:"base_info"`
 }
 
 // --- 消息体 ---

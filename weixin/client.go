@@ -115,6 +115,66 @@ func (c *Client) SendText(ctx context.Context, to, text, contextToken, clientID 
 	return nil
 }
 
+// GetTypingTicket 获取发送“正在输入中”所需的 typing_ticket
+func (c *Client) GetTypingTicket(ctx context.Context, userID, contextToken string) (string, error) {
+	if strings.TrimSpace(userID) == "" {
+		return "", fmt.Errorf("user_id is required")
+	}
+	if strings.TrimSpace(contextToken) == "" {
+		return "", fmt.Errorf("context_token is required")
+	}
+	req := getConfigReq{
+		UserID:       userID,
+		ContextToken: contextToken,
+		BaseInfo:     baseInfo{ChannelVersion: channelVersion},
+	}
+	payload, _ := json.Marshal(req)
+	raw, err := c.post(ctx, "ilink/bot/getconfig", payload, 0)
+	if err != nil {
+		return "", err
+	}
+	var resp getConfigResp
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return "", fmt.Errorf("getConfig json: %w", err)
+	}
+	if resp.Ret != 0 || resp.Errcode != 0 {
+		return "", fmt.Errorf("getConfig: ret=%d errcode=%d errmsg=%s", resp.Ret, resp.Errcode, resp.Errmsg)
+	}
+	return strings.TrimSpace(resp.TypingTicket), nil
+}
+
+// SendTyping 发送正在输入状态。status: 1=start, 2=stop。
+func (c *Client) SendTyping(ctx context.Context, userID, typingTicket string, status int) error {
+	if strings.TrimSpace(userID) == "" {
+		return fmt.Errorf("user_id is required")
+	}
+	if strings.TrimSpace(typingTicket) == "" {
+		return fmt.Errorf("typing_ticket is required")
+	}
+	req := sendTypingReq{
+		IlinkUserID:  userID,
+		TypingTicket: typingTicket,
+		Status:       status,
+		BaseInfo:     baseInfo{ChannelVersion: channelVersion},
+	}
+	payload, _ := json.Marshal(req)
+	raw, err := c.post(ctx, "ilink/bot/sendtyping", payload, 0)
+	if err != nil {
+		return err
+	}
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return nil
+	}
+	var resp sendMessageResp
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return fmt.Errorf("sendTyping json: %w", err)
+	}
+	if resp.Ret != 0 || resp.Errcode != 0 {
+		return fmt.Errorf("sendTyping: ret=%d errcode=%d errmsg=%s", resp.Ret, resp.Errcode, resp.Errmsg)
+	}
+	return nil
+}
+
 // --- 扫码登录 API ---
 
 type BotQRResponse struct {

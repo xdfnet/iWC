@@ -2,9 +2,11 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +17,7 @@ import (
 )
 
 const maxSendLen = 3800
-const agentTimeout = 60 * time.Second
+const agentTimeout = 120 * time.Second
 
 // Engine 桥接 WeChat 消息和 Claude Code
 type Engine struct {
@@ -24,19 +26,27 @@ type Engine struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+
+	sessions   map[string]string // userID -> sessionID
+	sessionsMu sync.RWMutex
+	sessPath   string
 }
 
 // New 创建引擎
 func New(wechat *weixin.Platform, agent *claude.Agent) *Engine {
 	return &Engine{
-		wechat: wechat,
-		agent:  agent,
+		wechat:   wechat,
+		agent:    agent,
+		sessions: make(map[string]string),
 	}
 }
 
 // Start 启动引擎
 func (e *Engine) Start(ctx context.Context) error {
 	e.ctx, e.cancel = context.WithCancel(ctx)
+
+	// 加载会话数据
+	e.loadSessions()
 
 	// 启动微信消息监听
 	if err := e.wechat.Start(e.handleWeChatMessage); err != nil {
@@ -59,6 +69,49 @@ func (e *Engine) Stop() {
 	log.Println("iCC 引擎已停止")
 }
 
+// loadSessions 从磁盘加载会话映射
+func (e *Engine) loadSessions() {
+	if e.sessPath == "" {
+		return
+	}
+	b, err := os.ReadFile(e.sessPath)
+	if err != nil {
+		return
+	}
+	var sessions map[string]string
+	if err := json.Unmarshal(b, &sessions); err != nil {
+		return
+	}
+	if sessions == nil {
+		sessions = make(map[string]string)
+	}
+	e.sessionsMu.Lock()
+	e.sessions = sessions
+	e.sessionsMu.Unlock()
+}
+
+// persistSessions 保存会话映射到磁盘
+func (e *Engine) persistSessions() {
+	if e.sessPath == "" {
+		return
+	}
+	e.sessionsMu.RLock()
+	out, err := json.MarshalIndent(e.sessions, "", "  ")
+	e.sessionsMu.RUnlock()
+	if err != nil {
+		log.Printf("⚠️ 编码 sessions 失败: %v", err)
+		return
+	}
+	if err := os.WriteFile(e.sessPath, out, 0600); err != nil {
+		log.Printf("⚠️ 保存 sessions 失败: %v", err)
+	}
+}
+
+// SetSessionsPath 设置会话文件路径
+func (e *Engine) SetSessionsPath(path string) {
+	e.sessPath = path
+}
+
 // handleWeChatMessage 处理来自微信的消息
 func (e *Engine) handleWeChatMessage(msg *weixin.IncomingMessage) {
 	log.Printf("📩 收到微信消息 [来自: %s]: %s", shortID(msg.FromUserID), truncateText(msg.Content, 50))
@@ -75,10 +128,20 @@ func (e *Engine) handleWeChatMessage(msg *weixin.IncomingMessage) {
 func (e *Engine) processMessage(msg *weixin.IncomingMessage) {
 	start := time.Now()
 
-	agentCtx, cancel := context.WithTimeout(e.ctx, agentTimeout)
-	defer cancel()
+	// 获取用户的 session
+	e.sessionsMu.RLock()
+	sessionID := e.sessions[msg.FromUserID]
+	e.sessionsMu.RUnlock()
 
-	finalContent, err := e.agent.Send(agentCtx, msg.Content)
+	agentCtx, cancel := context.WithTimeout(e.ctx, agentTimeout)
+	stopTyping := e.wechat.StartTyping(agentCtx, msg.FromUserID)
+	defer func() {
+		stopTyping()
+		cancel()
+	}()
+
+	// 发送消息（使用 session 恢复对话）
+	finalContent, newSessionID, err := e.agent.SendWithSession(agentCtx, msg.Content, sessionID)
 	elapsed := time.Since(start)
 	if err != nil {
 		if errors.Is(e.ctx.Err(), context.Canceled) {
@@ -94,6 +157,15 @@ func (e *Engine) processMessage(msg *weixin.IncomingMessage) {
 		log.Printf("❌ %s", errMsg)
 		_ = e.wechat.SendMessage(e.ctx, msg.FromUserID, errMsg)
 		return
+	}
+
+	// 如果是新 session，保存 sessionID
+	if sessionID == "" && newSessionID != "" {
+		e.sessionsMu.Lock()
+		e.sessions[msg.FromUserID] = newSessionID
+		e.sessionsMu.Unlock()
+		e.persistSessions()
+		log.Printf("💾 新会话已保存 for %s", shortID(msg.FromUserID))
 	}
 
 	finalContent = strings.TrimSpace(finalContent)
