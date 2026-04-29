@@ -1,5 +1,9 @@
 # iCC — 微信 ↔ Claude Code 桥接工具
 
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go)](https://golang.org)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/xdfnet/iCC?style=flat-square)](https://github.com/xdfnet/iCC/releases/latest)
+
 通过个人微信 ilink 连接 Claude Code，在微信里直接和 Claude 对话。
 
 **小工具路线**：够用、够小、够稳、容易看懂。
