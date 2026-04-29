@@ -10,6 +10,7 @@ import (
 func TestSendWithSessionNoResume(t *testing.T) {
 	cliPath := writeTestCLI(t, "#!/bin/sh\ncat\n")
 	agent := NewAgent("", cliPath)
+	agent.SetSessionsDir(t.TempDir())
 
 	got, sessID, err := agent.SendWithSession(context.Background(), "hello", "")
 	if err != nil {

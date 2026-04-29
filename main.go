@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -102,6 +103,12 @@ func run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// 写 PID 文件（供 stop 命令使用）
+	pidPath := pidFilePath()
+	os.MkdirAll(filepath.Dir(pidPath), 0755)
+	os.WriteFile(pidPath, []byte(fmt.Sprintf("%d", os.Getpid())), 0644)
+	defer os.Remove(pidPath)
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -120,39 +127,42 @@ func run() {
 	<-ctx.Done()
 }
 
+func pidFilePath() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".icc", "icc.pid")
+}
+
 // --- stop ---
 
 func runStop() {
-	// 尝试通过 launchctl 停止（autostart 模式）
 	stopped := false
+
+	// 尝试通过 launchctl 停止（autostart 模式）
 	plist := plistPath()
 	if _, err := os.Stat(plist); err == nil {
-		out, err := exec.Command("launchctl", "stop", "com.user.icc").CombinedOutput()
+		out, _ := exec.Command("launchctl", "stop", "com.user.icc").CombinedOutput()
 		if len(out) > 0 {
 			fmt.Print(string(out))
 		}
-		if err == nil {
+		stopped = true
+	}
+
+	// 通过 PID 文件停止手动启动的进程
+	pidPath := pidFilePath()
+	if data, err := os.ReadFile(pidPath); err == nil {
+		pid := strings.TrimSpace(string(data))
+		if pid != "" {
+			exec.Command("kill", pid).Run()
+			os.Remove(pidPath)
 			stopped = true
 		}
 	}
 
-	// 杀掉手动启动的服务进程。只匹配 start，避免误杀当前的 `icc stop`。
-	out, err := exec.Command("pkill", "-f", "icc start").CombinedOutput()
-	if err != nil {
-		// pkill 返回 1 表示没找到进程
-		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-			if stopped {
-				fmt.Println("✅ iCC 已停止")
-			} else {
-				fmt.Println("ℹ️  iCC 未在运行")
-			}
-			return
-		}
-		fmt.Fprintf(os.Stderr, "❌ 停止失败: %v\n%s", err, string(out))
-		os.Exit(1)
+	if stopped {
+		fmt.Println("✅ iCC 已停止")
+	} else {
+		fmt.Println("ℹ️  iCC 未在运行")
 	}
-
-	fmt.Println("✅ iCC 已停止")
 }
 
 // --- restart ---

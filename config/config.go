@@ -89,7 +89,7 @@ func Load(path string) (*Config, error) {
 	return cfg, nil
 }
 
-// Save 保存配置到文件
+// Save 保存配置到文件（原子写入）
 func Save(cfg *Config, path string) error {
 	if path == "" {
 		path = ConfigPath()
@@ -98,10 +98,21 @@ func Save(cfg *Config, path string) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("创建配置目录失败: %w", err)
 	}
-	f, err := os.Create(path)
+	// 先写临时文件，再 rename 保证原子性
+	tmp := path + ".tmp"
+	f, err := os.Create(tmp)
 	if err != nil {
 		return fmt.Errorf("创建配置文件失败: %w", err)
 	}
-	defer f.Close()
-	return toml.NewEncoder(f).Encode(cfg)
+	err = toml.NewEncoder(f).Encode(cfg)
+	f.Close()
+	if err != nil {
+		os.Remove(tmp)
+		return fmt.Errorf("写入配置失败: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		os.Remove(tmp)
+		return fmt.Errorf("保存配置失败: %w", err)
+	}
+	return nil
 }

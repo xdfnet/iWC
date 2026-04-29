@@ -27,6 +27,9 @@ type Engine struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
+	started   bool
+	startedMu sync.Mutex
+
 	sessions   map[string]string // userID -> sessionID
 	sessionsMu sync.RWMutex
 	sessPath   string
@@ -41,8 +44,16 @@ func New(wechat *weixin.Platform, agent *claude.Agent) *Engine {
 	}
 }
 
-// Start 启动引擎
+// Start 启动引擎（幂等，重复调用安全）
 func (e *Engine) Start(ctx context.Context) error {
+	e.startedMu.Lock()
+	if e.started {
+		e.startedMu.Unlock()
+		return nil
+	}
+	e.started = true
+	e.startedMu.Unlock()
+
 	e.ctx, e.cancel = context.WithCancel(ctx)
 
 	// 加载会话数据
@@ -50,6 +61,9 @@ func (e *Engine) Start(ctx context.Context) error {
 
 	// 启动微信消息监听
 	if err := e.wechat.Start(e.handleWeChatMessage); err != nil {
+		e.startedMu.Lock()
+		e.started = false
+		e.startedMu.Unlock()
 		return fmt.Errorf("启动微信平台失败: %w", err)
 	}
 
@@ -61,6 +75,12 @@ func (e *Engine) Start(ctx context.Context) error {
 
 // Stop 停止引擎
 func (e *Engine) Stop() {
+	e.startedMu.Lock()
+	defer e.startedMu.Unlock()
+	if !e.started {
+		return
+	}
+	e.started = false
 	if e.cancel != nil {
 		e.cancel()
 	}
@@ -159,13 +179,13 @@ func (e *Engine) processMessage(msg *weixin.IncomingMessage) {
 		return
 	}
 
-	// 如果是新 session，保存 sessionID
-	if sessionID == "" && newSessionID != "" {
+	// 保存/更新 sessionID（处理新建、过期重试等场景）
+	if newSessionID != "" && newSessionID != sessionID {
 		e.sessionsMu.Lock()
 		e.sessions[msg.FromUserID] = newSessionID
 		e.sessionsMu.Unlock()
 		e.persistSessions()
-		log.Printf("💾 新会话已保存 for %s", shortID(msg.FromUserID))
+		log.Printf("💾 会话已保存 for %s", shortID(msg.FromUserID))
 	}
 
 	finalContent = strings.TrimSpace(finalContent)

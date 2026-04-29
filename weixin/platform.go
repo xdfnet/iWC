@@ -100,11 +100,15 @@ func (p *Platform) loadSyncBuf() {
 }
 
 func (p *Platform) persistSyncBuf(buf string) {
+	p.syncBufMu.Lock()
 	p.syncBuf = buf
-	if p.syncPath == "" {
+	path := p.syncPath
+	p.syncBufMu.Unlock()
+
+	if path == "" {
 		return
 	}
-	if err := os.WriteFile(p.syncPath, []byte(buf), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(buf), 0600); err != nil {
 		log.Printf("⚠️ 保存 get_updates 游标失败: %v", err)
 	}
 }
@@ -162,6 +166,11 @@ func (p *Platform) getContextToken(userID string) string {
 	return p.tokens[userID]
 }
 
+// SetContextTokenForTest 测试辅助：设置 context_token（绕过消息接收流程）
+func (p *Platform) SetContextTokenForTest(userID, token string) {
+	p.setContextToken(userID, token)
+}
+
 func (p *Platform) getTypingTicket(ctx context.Context, userID, contextToken string) string {
 	p.typingMu.RLock()
 	entry, ok := p.typingTickets[userID]
@@ -214,13 +223,15 @@ func (p *Platform) runTyping(ctx context.Context, userID string) {
 		return
 	}
 
+	// 无论 start 是否发送成功，都确保发送 stop（服务端自己也有 TTL）
+	defer p.stopTyping(userID, ticket)
+
 	if err := p.client.SendTyping(ctx, userID, ticket, typingStatusStart); err != nil {
 		if ctx.Err() == nil {
 			log.Printf("⚠️ 发送正在输入状态失败: %v", err)
 		}
 		return
 	}
-	defer p.stopTyping(userID, ticket)
 
 	ticker := time.NewTicker(typingRepeatInterval)
 	defer ticker.Stop()
@@ -248,10 +259,13 @@ func (p *Platform) stopTyping(userID, ticket string) {
 	}
 }
 
-// Start 开始消息轮询
+// Start 开始消息轮询（幂等）
 func (p *Platform) Start(handler MessageHandler) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.cancel != nil {
+		return nil // 已启动
+	}
 	p.handler = handler
 	ctx, cancel := context.WithCancel(context.Background())
 	p.cancel = cancel
@@ -342,11 +356,9 @@ func (p *Platform) pollLoop(ctx context.Context) {
 			continue
 		}
 
-		p.syncBufMu.Lock()
 		if resp.GetUpdatesBuf != "" {
 			p.persistSyncBuf(resp.GetUpdatesBuf)
 		}
-		p.syncBufMu.Unlock()
 
 		p.mu.RLock()
 		h := p.handler

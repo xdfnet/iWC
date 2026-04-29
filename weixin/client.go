@@ -311,6 +311,20 @@ func isTimeout(err error) bool {
 	return errors.As(err, &ne) && ne.Timeout()
 }
 
+func isNetworkError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var ne net.Error
+	if errors.As(err, &ne) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "no such host") ||
+		strings.Contains(msg, "network is unreachable")
+}
+
 // QRLogin 执行完整的扫码登录流程（命令行用）
 func QRLogin(ctx context.Context, apiBaseURL, botType string, timeout time.Duration) (token, baseURL, ilinkBotID, ilinkUserID string, err error) {
 	c := NewClient(apiBaseURL, "")
@@ -333,7 +347,15 @@ func QRLogin(ctx context.Context, apiBaseURL, botType string, timeout time.Durat
 	for time.Now().Before(deadline) {
 		status, err := c.PollQRStatus(ctx, qrKey)
 		if err != nil {
-			return "", "", "", "", err
+			// 网络瞬时错误重试一次
+			if isTimeout(err) || isNetworkError(err) {
+				log.Printf("⚠️ 轮询二维码状态失败 (%v)，重试...", err)
+				time.Sleep(2 * time.Second)
+				status, err = c.PollQRStatus(ctx, qrKey)
+			}
+			if err != nil {
+				return "", "", "", "", err
+			}
 		}
 		switch status.Status {
 		case "wait", "":
