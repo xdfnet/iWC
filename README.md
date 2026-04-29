@@ -73,11 +73,20 @@ work_dir = "/Users/admin"
 data_dir = "/Users/admin/.icc"
 ```
 
-## 构建
+## 安装
+
+### 方式一：Releases 下载（推荐）
+
+1. 下载 [Releases](https://github.com/xdfnet/iCC/releases) 中的 `iCC-v*.tar.gz`
+2. 解压并将 `icc` 二进制文件放入 `$PATH`（如 `~/.local/bin/`）
+3. 确保可执行权限：`chmod +x icc`
+
+### 方式二：源码编译
 
 ```bash
-make install    # 编译 + 安装到 ~/.local/bin/icc
-make build      # 编译到 build/icc
+git clone https://github.com/xdfnet/iCC.git
+cd iCC
+make install
 ```
 
 ## 测试
