@@ -1,0 +1,26 @@
+# iCC 配置示例
+# 复制到 ~/.icc/config.toml 后修改
+
+[wechat]
+# ilink Bearer Token（通过 `icc wechat setup` 获取）
+token = ""
+
+# ilink API 基础地址（通常无需修改）
+# base_url = "https://ilinkai.weixin.qq.com"
+
+# 允许使用机器人的微信用户（逗号分隔，留空=允许所有）
+# allow_from = ""
+
+# 长轮询超时毫秒数
+# long_poll_timeout_ms = 35000
+
+[claude]
+# 工作目录（Claude Code 将在此目录下运行）
+work_dir = "/Users/admin"
+
+# claude 命令或路径
+# cli_path = "claude"
+
+[system]
+# 数据目录（存放状态文件）
+# data_dir = ""

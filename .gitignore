@@ -1,0 +1,34 @@
+# iCC - iCode Claude Code Connector
+
+# Build
+build/
+icc
+icc.exe
+icc-*.tar.gz
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Config (user-specific)
+config.toml
+config.local.toml
+
+# State
+data/
+
+# Claude Code
+.claude/
+
+# Logs
+*.log
+
+# Misc
+*.out
+*.test
