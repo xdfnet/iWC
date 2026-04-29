@@ -12,7 +12,7 @@ BUILD_DIR = build
 APP_NAME = icc
 
 # 从 main.go 动态读取版本号
-VERSION = $(shell grep 'const version = ' main.go | sed 's/.*"$$//' | tr -d '"')
+VERSION = $(shell awk -F\" '/const version = / {print $$2; exit}' main.go)
 
 # 颜色定义
 RED = \033[0;31m
@@ -73,6 +73,7 @@ install: build
 
 package: build
 	@echo "$(BLUE)打包 $(PROJECT_NAME)...$(NC)"
+	rm -f $(BUILD_DIR)/$(APP_NAME)-v$(VERSION) $(BUILD_DIR)/$(APP_NAME)-v$(VERSION).tar.gz
 	cp $(BUILD_DIR)/$(APP_NAME) $(BUILD_DIR)/$(APP_NAME)-v$(VERSION)
 	cd $(BUILD_DIR) && tar czf $(APP_NAME)-v$(VERSION).tar.gz $(APP_NAME)-v$(VERSION)
 	rm $(BUILD_DIR)/$(APP_NAME)-v$(VERSION)
@@ -91,7 +92,11 @@ _require_msg:
 
 _update_version:
 	@echo "$(YELLOW)递增版本号...$(NC)"
-	@CURRENT=$$(grep 'const version = ' main.go | sed 's/.*"$$//' | tr -d '"'); \
+	@CURRENT=$$(awk -F\" '/const version = / {print $$2; exit}' main.go); \
+	if ! echo "$$CURRENT" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$$'; then \
+		echo "$(RED)错误: 当前版本号格式无效: $$CURRENT$(NC)"; \
+		exit 1; \
+	fi; \
 	MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
 	MINOR=$$(echo $$CURRENT | cut -d. -f2); \
 	PATCH=$$(echo $$CURRENT | cut -d. -f3); \
@@ -113,12 +118,13 @@ push: _require_msg _update_version install package
 		echo "$(GREEN)推送完成$(NC)"; \
 	fi
 	@echo "$(YELLOW)创建 GitHub Release...$(NC)"
-	@ZIP_PATH=$$(find $(BUILD_DIR) -name "$(APP_NAME)-v*.tar.gz" -type f | head -1); \
-	@gh release create "v$(VERSION)" --title "iCC v$(VERSION)" --notes "$(MSG)"; \
-	if [ -n "$$ZIP_PATH" ]; then \
-		gh release upload "v$(VERSION)" "$$ZIP_PATH"; \
-		echo "$(GREEN)已上传: $$ZIP_PATH$(NC)"; \
+	@ZIP_PATH="$(BUILD_DIR)/$(APP_NAME)-v$(VERSION).tar.gz"; \
+	if [ ! -f "$$ZIP_PATH" ]; then \
+		echo "$(RED)错误: 未找到发布包 $$ZIP_PATH$(NC)"; \
+		exit 1; \
 	fi; \
+	gh release create "v$(VERSION)" "$$ZIP_PATH" --title "iCC v$(VERSION)" --notes "$(MSG)"; \
+	echo "$(GREEN)已上传: $$ZIP_PATH$(NC)"; \
 	echo "$(GREEN)Release 创建完成: https://github.com/xdfnet/iCC/releases/tag/v$(VERSION)$(NC)"
 
 # =============================================================================
