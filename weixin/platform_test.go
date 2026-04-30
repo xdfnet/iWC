@@ -1,9 +1,14 @@
 package weixin
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestExtractText(t *testing.T) {
@@ -325,4 +330,66 @@ func TestPlatformPersistsContextTokens(t *testing.T) {
 	if got != "ctx-token" {
 		t.Fatalf("reloaded context token = %q, want ctx-token", got)
 	}
+}
+
+func TestStartTypingLifecycle(t *testing.T) {
+	statusCh := make(chan int, 4)
+	userID := "user@im.wechat"
+	contextToken := "ctx-token"
+	ticket := "typing-ticket"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ilink/bot/getconfig":
+			var req getConfigReq
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				t.Errorf("decode getconfig: %v", err)
+				return
+			}
+			if req.UserID != userID || req.ContextToken != contextToken {
+				t.Errorf("getconfig request = %+v", req)
+			}
+			_ = json.NewEncoder(w).Encode(getConfigResp{TypingTicket: ticket})
+		case "/ilink/bot/sendtyping":
+			var req sendTypingReq
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				t.Errorf("decode sendtyping: %v", err)
+				return
+			}
+			if req.IlinkUserID != userID || req.TypingTicket != ticket {
+				t.Errorf("sendtyping request = %+v", req)
+			}
+			statusCh <- req.Status
+			_ = json.NewEncoder(w).Encode(sendMessageResp{})
+		default:
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	p := NewPlatform("token", server.URL, "", 0, t.TempDir())
+	p.SetContextTokenForTest(userID, contextToken)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stop := p.StartTyping(ctx, userID)
+
+	if got := waitTypingStatus(t, statusCh); got != typingStatusStart {
+		t.Fatalf("first typing status = %d, want start", got)
+	}
+	stop()
+	if got := waitTypingStatus(t, statusCh); got != typingStatusStop {
+		t.Fatalf("second typing status = %d, want stop", got)
+	}
+}
+
+func waitTypingStatus(t *testing.T, ch <-chan int) int {
+	t.Helper()
+	select {
+	case status := <-ch:
+		return status
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for typing status")
+	}
+	return 0
 }
