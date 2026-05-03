@@ -1,4 +1,4 @@
-# iCC Makefile
+# iWC Makefile
 # 用 Go 构建的微信 → Claude Code 桥接工具
 
 .PHONY: help build run dev install package clean push _require_msg _update_version
@@ -7,9 +7,9 @@
 # 项目配置
 # =============================================================================
 
-PROJECT_NAME = iCC
+PROJECT_NAME = iWC
 BUILD_DIR = build
-APP_NAME = icc
+APP_NAME = iwc
 
 # 从 main.go 动态读取版本号
 VERSION = $(shell awk -F\" '/const version = / {print $$2; exit}' main.go)
@@ -29,7 +29,7 @@ NC = \033[0m
 # =============================================================================
 
 help:
-	@echo "$(CYAN)iCC - 微信 ↔ Claude Code 桥接工具$(NC)"
+	@echo "$(CYAN)iWC - 微信 ↔ Claude Code 桥接工具$(NC)"
 	@echo ""
 	@echo "$(GREEN)核心命令:$(NC)"
 	@echo "  $(YELLOW)dev$(NC)          - 构建并运行 (开发模式)"
@@ -123,9 +123,9 @@ push: _require_msg _update_version install package
 		echo "$(RED)错误: 未找到发布包 $$ZIP_PATH$(NC)"; \
 		exit 1; \
 	fi; \
-	gh release create "v$(VERSION)" "$$ZIP_PATH" --title "iCC v$(VERSION)" --notes "$(MSG)"; \
+	gh release create "v$(VERSION)" "$$ZIP_PATH" --title "iWC v$(VERSION)" --notes "$(MSG)"; \
 	echo "$(GREEN)已上传: $$ZIP_PATH$(NC)"; \
-	echo "$(GREEN)Release 创建完成: https://github.com/xdfnet/iCC/releases/tag/v$(VERSION)$(NC)"
+	echo "$(GREEN)Release 创建完成: https://github.com/xdfnet/iWC/releases/tag/v$(VERSION)$(NC)"
 
 # =============================================================================
 # 清理命令

@@ -24,23 +24,23 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Claude.WorkDir != home {
 		t.Errorf("WorkDir = %q, want %q", cfg.Claude.WorkDir, home)
 	}
-	if cfg.System.DataDir != filepath.Join(home, ".icc") {
+	if cfg.System.DataDir != filepath.Join(home, ".iwc") {
 		t.Errorf("DataDir = %q", cfg.System.DataDir)
 	}
 }
 
 func TestConfigPath(t *testing.T) {
-	t.Setenv("ICC_CONFIG", "")
+	t.Setenv("IWC_CONFIG", "")
 	path := ConfigPath()
 	home, _ := os.UserHomeDir()
-	want := filepath.Join(home, ".icc", "config.toml")
+	want := filepath.Join(home, ".iwc", "config.toml")
 	if path != want {
 		t.Errorf("ConfigPath = %q, want %q", path, want)
 	}
 }
 
 func TestConfigPathEnvOverride(t *testing.T) {
-	t.Setenv("ICC_CONFIG", "/tmp/custom-config.toml")
+	t.Setenv("IWC_CONFIG", "/tmp/custom-config.toml")
 	path := ConfigPath()
 	if path != "/tmp/custom-config.toml" {
 		t.Errorf("ConfigPath = %q, want /tmp/custom-config.toml", path)
@@ -58,7 +58,7 @@ func TestSaveAndLoad(t *testing.T) {
 	cfg.WeChat.LongPollMS = 30000
 	cfg.Claude.WorkDir = "/tmp"
 	cfg.Claude.CLIPath = "/usr/local/bin/claude"
-	cfg.System.DataDir = "/tmp/.icc"
+	cfg.System.DataDir = "/tmp/.iwc"
 
 	if err := Save(cfg, path); err != nil {
 		t.Fatalf("Save failed: %v", err)
@@ -87,7 +87,7 @@ func TestSaveAndLoad(t *testing.T) {
 	if loaded.Claude.CLIPath != "/usr/local/bin/claude" {
 		t.Errorf("CLIPath = %q", loaded.Claude.CLIPath)
 	}
-	if loaded.System.DataDir != "/tmp/.icc" {
+	if loaded.System.DataDir != "/tmp/.iwc" {
 		t.Errorf("DataDir = %q", loaded.System.DataDir)
 	}
 }
@@ -126,7 +126,7 @@ func TestSaveCreatesDirectory(t *testing.T) {
 func TestSaveWithEmptyPath(t *testing.T) {
 	dir := t.TempDir()
 	cfg := DefaultConfig()
-	t.Setenv("ICC_CONFIG", filepath.Join(dir, "config.toml"))
+	t.Setenv("IWC_CONFIG", filepath.Join(dir, "config.toml"))
 
 	if err := Save(cfg, ""); err != nil {
 		t.Fatalf("Save failed: %v", err)

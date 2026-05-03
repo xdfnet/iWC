@@ -12,8 +12,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/admin/iCode/iCC/claude"
-	"github.com/admin/iCode/iCC/weixin"
+	"github.com/admin/iCode/iWC/claude"
+	"github.com/admin/iCode/iWC/weixin"
 )
 
 const maxSendLen = 3800
@@ -67,7 +67,7 @@ func (e *Engine) Start(ctx context.Context) error {
 		return fmt.Errorf("启动微信平台失败: %w", err)
 	}
 
-	log.Println("✅ iCC 引擎已启动")
+	log.Println("✅ iWC 引擎已启动")
 	log.Println("   Claude Code 就绪，等待微信消息...")
 
 	return nil
@@ -86,7 +86,7 @@ func (e *Engine) Stop() {
 	}
 	e.wechat.Stop()
 	e.wg.Wait()
-	log.Println("iCC 引擎已停止")
+	log.Println("iWC 引擎已停止")
 }
 
 // loadSessions 从磁盘加载会话映射

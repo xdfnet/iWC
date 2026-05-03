@@ -1,4 +1,4 @@
-# iCC - iCode Claude Code Connector
+# iWC - iCode Claude Code Connector
 
 微信个人号 ↔ Claude Code 桥接工具。
 
@@ -14,12 +14,12 @@
 ## 命令
 
 ```
-icc start             启动服务
-icc stop              停止服务
-icc restart           重启服务
-icc wechat setup      扫码登录微信
-icc autostart on/off  开机自启
-icc version            版本号
+iwc start             启动服务
+iwc stop              停止服务
+iwc restart           重启服务
+iwc wechat setup      扫码登录微信
+iwc autostart on/off  开机自启
+iwc version            版本号
 ```
 
 ## 架构
@@ -31,12 +31,12 @@ icc version            版本号
 
 - 每条消息独立 `claude --print` 进程
 - 通过 `--resume <session_id>` 恢复对话
-- session 存 `~/.icc/wechat/sessions.json`
+- session 存 `~/.iwc/wechat/sessions.json`
 
 ## 项目结构
 
 ```
-iCC/
+iWC/
 ├── main.go              # 入口、CLI
 ├── config/config.go     # 配置加载
 ├── weixin/
@@ -55,7 +55,7 @@ iCC/
 
 ```bash
 make install    # 编译 + 安装
-make build      # 编译到 build/icc
+make build      # 编译到 build/iwc
 ```
 
 ## 测试

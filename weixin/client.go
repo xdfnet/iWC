@@ -21,7 +21,7 @@ const (
 	defaultAPITimeout  = 15 * time.Second
 	defaultLongPollDur = 35 * time.Second
 	maxResponseBody    = 64 << 20 // 64MB
-	channelVersion     = "icc-weixin/1.0"
+	channelVersion     = "iwc-weixin/1.0"
 )
 
 // Client 管理 ilink HTTP API 调用
@@ -81,7 +81,7 @@ func (c *Client) SendText(ctx context.Context, to, text, contextToken, clientID 
 		return fmt.Errorf("context_token is required")
 	}
 	if clientID == "" {
-		clientID = "icc-" + randomHex(6)
+		clientID = "iwc-" + randomHex(6)
 	}
 	items := []messageItem{
 		{Type: messageItemText, TextItem: &textItem{Text: text}},
@@ -232,7 +232,7 @@ func (c *Client) PollQRStatus(ctx context.Context, qrKey string) (*QRStatusRespo
 }
 
 func (c *Client) VerifyToken(ctx context.Context) error {
-	body := []byte(`{"get_updates_buf":"","base_info":{"channel_version":"icc-verify/1.0"}}`)
+	body := []byte(`{"get_updates_buf":"","base_info":{"channel_version":"iwc-verify/1.0"}}`)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"ilink/bot/getupdates", bytes.NewReader(body))
 	if err != nil {
 		return err

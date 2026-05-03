@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/admin/iCode/iCC/claude"
-	"github.com/admin/iCode/iCC/weixin"
+	"github.com/admin/iCode/iWC/claude"
+	"github.com/admin/iCode/iWC/weixin"
 )
 
 // --- 纯函数测试 ---

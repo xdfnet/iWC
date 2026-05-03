@@ -306,7 +306,7 @@ func (p *Platform) SendMessageChunked(ctx context.Context, toUserID, text string
 		if i > 0 {
 			time.Sleep(100 * time.Millisecond)
 		}
-		cid := fmt.Sprintf("icc-%s", randomHex(6))
+		cid := fmt.Sprintf("iwc-%s", randomHex(6))
 		if err := p.client.SendText(ctx, toUserID, chunk, token, cid); err != nil {
 			return fmt.Errorf("发送第 %d 块失败: %w", i+1, err)
 		}

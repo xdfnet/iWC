@@ -1,4 +1,4 @@
-module github.com/admin/iCode/iCC
+module github.com/admin/iCode/iWC
 
 go 1.22
 

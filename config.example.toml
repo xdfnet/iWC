@@ -1,8 +1,8 @@
-# iCC 配置示例
-# 复制到 ~/.icc/config.toml 后修改
+# iWC 配置示例
+# 复制到 ~/.iwc/config.toml 后修改
 
 [wechat]
-# ilink Bearer Token（通过 `icc wechat setup` 获取）
+# ilink Bearer Token（通过 `iwc wechat setup` 获取）
 token = ""
 
 # ilink API 基础地址
@@ -23,4 +23,4 @@ cli_path = ""
 
 [system]
 # 数据目录（存放 get_updates 游标和 context_token 缓存）
-data_dir = "/Users/admin/.icc"
+data_dir = "/Users/admin/.iwc"

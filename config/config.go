@@ -47,18 +47,22 @@ func DefaultConfig() *Config {
 			WorkDir: home,
 		},
 		System: SystemConfig{
-			DataDir: filepath.Join(home, ".icc"),
+			DataDir: filepath.Join(home, ".iwc"),
 		},
 	}
 }
 
 // ConfigPath 返回配置文件路径
 func ConfigPath() string {
+	if p := os.Getenv("IWC_CONFIG"); p != "" {
+		return p
+	}
+	// Backward compatibility for previous env var name.
 	if p := os.Getenv("ICC_CONFIG"); p != "" {
 		return p
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".icc", "config.toml")
+	return filepath.Join(home, ".iwc", "config.toml")
 }
 
 // Load 加载配置文件
@@ -70,7 +74,7 @@ func Load(path string) (*Config, error) {
 	}
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return cfg, fmt.Errorf("配置文件不存在: %s\n请先运行 `icc wechat setup`", path)
+		return cfg, fmt.Errorf("配置文件不存在: %s\n请先运行 `iwc wechat setup`", path)
 	}
 
 	md, err := toml.DecodeFile(path, cfg)

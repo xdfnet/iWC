@@ -13,10 +13,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/admin/iCode/iCC/claude"
-	"github.com/admin/iCode/iCC/config"
-	"github.com/admin/iCode/iCC/engine"
-	"github.com/admin/iCode/iCC/weixin"
+	"github.com/admin/iCode/iWC/claude"
+	"github.com/admin/iCode/iWC/config"
+	"github.com/admin/iCode/iWC/engine"
+	"github.com/admin/iCode/iWC/weixin"
 )
 
 const version = "1.0.3"
@@ -41,32 +41,32 @@ func main() {
 	case "autostart":
 		runAutostartCmd(os.Args[2:])
 	case "version", "--version", "-v":
-		fmt.Printf("iCC v%s\n", version)
+		fmt.Printf("iWC v%s\n", version)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
 		fmt.Fprintf(os.Stderr, "未知命令: %s\n", os.Args[1])
-		fmt.Fprintln(os.Stderr, "运行 icc help 查看用法")
+		fmt.Fprintln(os.Stderr, "运行 iwc help 查看用法")
 		os.Exit(1)
 	}
 }
 
 func printUsage() {
-	fmt.Println(`iCC - 微信个人号 ↔ Claude Code 桥接工具
+	fmt.Println(`iWC - 微信个人号 ↔ Claude Code 桥接工具
 
 用法:
-  icc start             启动服务
-  icc stop              停止服务
-  icc restart           重启服务
-  icc wechat setup      扫码登录微信
-  icc autostart on      设置开机自启
-  icc autostart off     取消开机自启
-  icc version           显示版本号
+  iwc start             启动服务
+  iwc stop              停止服务
+  iwc restart           重启服务
+  iwc wechat setup      扫码登录微信
+  iwc autostart on      设置开机自启
+  iwc autostart off     取消开机自启
+  iwc version           显示版本号
 
 首次使用:
-  1. icc wechat setup     # 扫码登录
-  2. icc autostart on     # 设置开机自启（可选）
-  3. icc start            # 启动服务`)
+  1. iwc wechat setup     # 扫码登录
+  2. iwc autostart on     # 设置开机自启（可选）
+  3. iwc start            # 启动服务`)
 }
 
 // --- start ---
@@ -79,7 +79,7 @@ func run() {
 	}
 
 	if cfg.WeChat.Token == "" {
-		fmt.Fprintln(os.Stderr, "❌ 未配置微信 token，请先运行: icc wechat setup")
+		fmt.Fprintln(os.Stderr, "❌ 未配置微信 token，请先运行: iwc wechat setup")
 		os.Exit(1)
 	}
 
@@ -129,7 +129,7 @@ func run() {
 
 func pidFilePath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".icc", "icc.pid")
+	return filepath.Join(home, ".iwc", "iwc.pid")
 }
 
 // --- stop ---
@@ -140,7 +140,7 @@ func runStop() {
 	// 尝试通过 launchctl 停止（autostart 模式）
 	plist := plistPath()
 	if _, err := os.Stat(plist); err == nil {
-		out, _ := exec.Command("launchctl", "stop", "com.user.icc").CombinedOutput()
+		out, _ := exec.Command("launchctl", "stop", "com.user.iwc").CombinedOutput()
 		if len(out) > 0 {
 			fmt.Print(string(out))
 		}
@@ -159,9 +159,9 @@ func runStop() {
 	}
 
 	if stopped {
-		fmt.Println("✅ iCC 已停止")
+		fmt.Println("✅ iWC 已停止")
 	} else {
-		fmt.Println("ℹ️  iCC 未在运行")
+		fmt.Println("ℹ️  iWC 未在运行")
 	}
 }
 
@@ -175,7 +175,7 @@ func runRestart() {
 
 // --- 开机自启 ---
 
-const plistName = "com.user.icc.plist"
+const plistName = "com.user.iwc.plist"
 
 func plistPath() string {
 	home, _ := os.UserHomeDir()
@@ -184,13 +184,13 @@ func plistPath() string {
 
 func plistContent() string {
 	home, _ := os.UserHomeDir()
-	binary := filepath.Join(home, ".local", "bin", "icc")
+	binary := filepath.Join(home, ".local", "bin", "iwc")
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.user.icc</string>
+    <string>com.user.iwc</string>
     <key>ProgramArguments</key>
     <array>
         <string>%s</string>
@@ -201,9 +201,9 @@ func plistContent() string {
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/tmp/icc_stdout.log</string>
+    <string>/tmp/iwc_stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/icc_stderr.log</string>
+    <string>/tmp/iwc_stderr.log</string>
 </dict>
 </plist>
 `, binary)
@@ -212,8 +212,8 @@ func plistContent() string {
 func runAutostartCmd(args []string) {
 	if len(args) == 0 {
 		fmt.Println(`用法:
-  icc autostart on     设置开机自启
-  icc autostart off    取消开机自启`)
+  iwc autostart on     设置开机自启
+  iwc autostart off    取消开机自启`)
 		return
 	}
 
@@ -250,7 +250,7 @@ func runAutostartCmd(args []string) {
 		fmt.Println("✅ 开机自启已关闭")
 
 	default:
-		fmt.Fprintf(os.Stderr, "未知参数: %s\n用法: icc autostart on|off\n", args[0])
+		fmt.Fprintf(os.Stderr, "未知参数: %s\n用法: iwc autostart on|off\n", args[0])
 		os.Exit(1)
 	}
 }
@@ -260,8 +260,8 @@ func runAutostartCmd(args []string) {
 func runWechatCmd(args []string) {
 	if len(args) == 0 {
 		fmt.Println(`微信命令:
-  icc wechat setup    扫码登录并生成配置
-  icc wechat help     显示帮助`)
+  iwc wechat setup    扫码登录并生成配置
+  iwc wechat help     显示帮助`)
 		return
 	}
 
@@ -276,9 +276,9 @@ func runWechatCmd(args []string) {
 		doWechatSetup(*token, *apiURL, *timeout, *botType)
 	case "help", "--help", "-h":
 		fmt.Println(`用法:
-  icc wechat setup                 扫码登录
-  icc wechat setup --token <tok>  使用已有 token
-  icc wechat setup --api-url ...  自定义 API 地址`)
+  iwc wechat setup                 扫码登录
+  iwc wechat setup --token <tok>  使用已有 token
+  iwc wechat setup --api-url ...  自定义 API 地址`)
 	default:
 		fmt.Fprintf(os.Stderr, "未知子命令: %s\n", args[0])
 	}
@@ -329,5 +329,5 @@ func doWechatSetup(tokenStr, apiURL string, timeout int, botType string) {
 	}
 	fmt.Printf("✅ 配置已保存: %s\n", cfgPath)
 	fmt.Println()
-	fmt.Println("现在可以运行 `icc start` 启动服务了")
+	fmt.Println("现在可以运行 `iwc start` 启动服务了")
 }
