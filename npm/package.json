@@ -1,0 +1,36 @@
+{
+  "name": "@xdfnet/iwc-cli",
+  "version": "1.0.3",
+  "description": "iWC (WeChat to Claude Code) CLI distributor for npm",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xdfnet/iWC.git",
+    "directory": "npm"
+  },
+  "homepage": "https://github.com/xdfnet/iWC#readme",
+  "bugs": {
+    "url": "https://github.com/xdfnet/iWC/issues"
+  },
+  "bin": {
+    "iwc": "bin/iwc.js"
+  },
+  "files": [
+    "bin",
+    "scripts",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "check": "node bin/iwc.js version"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "iwc",
+    "wechat",
+    "claude",
+    "cli"
+  ]
+}

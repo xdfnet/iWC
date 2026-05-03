@@ -77,6 +77,13 @@ data_dir = "/Users/admin/.iwc"
 
 ## 安装
 
+### 方式零：npm 安装（推荐给使用者）
+
+```bash
+npm i -g @xdfnet/iwc-cli
+iwc version
+```
+
 ### 方式一：Releases 下载（推荐）
 
 1. 下载 [Releases](https://github.com/xdfnet/iWC/releases) 中的 `iwc-v*.tar.gz`
@@ -89,6 +96,29 @@ data_dir = "/Users/admin/.iwc"
 git clone https://github.com/xdfnet/iWC.git
 cd iWC
 make install
+```
+
+## npm 发布（维护者）
+
+仓库内已提供 npm 分发包目录：`npm/`。
+
+1. 确保 GitHub Release（如 `v1.0.3`）包含以下资产：
+- `iwc-darwin-arm64.tar.gz`
+- `iwc-darwin-amd64.tar.gz`
+- `iwc-linux-arm64.tar.gz`
+- `iwc-linux-amd64.tar.gz`
+- `iwc-windows-amd64.zip`
+- `iwc-windows-arm64.zip`
+
+2. 每个压缩包根目录应包含可执行文件：
+- macOS/Linux: `iwc`
+- Windows: `iwc.exe`
+
+3. 发布 npm 包：
+
+```bash
+cd npm
+npm publish --access public
 ```
 
 ## 测试
