@@ -50,34 +50,41 @@ function releaseUrl(assetName) {
   return `https://github.com/${owner}/${repo}/releases/download/${tag}/${assetName}`;
 }
 
-function download(url, dest) {
+function fetchToBuffer(url, depth = 0) {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
+    if (depth > 5) {
+      reject(new Error(`too many redirects: ${url}`));
+      return;
+    }
+
     const request = https.get(url, { headers: { "User-Agent": "iwc-cli-installer" } }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        file.close(() => fs.rmSync(dest, { force: true }));
-        return resolve(download(res.headers.location, dest));
+        resolve(fetchToBuffer(res.headers.location, depth + 1));
+        return;
       }
       if (res.statusCode !== 200) {
-        file.close(() => fs.rmSync(dest, { force: true }));
-        return reject(new Error(`download failed (${res.statusCode}) from ${url}`));
+        reject(new Error(`download failed (${res.statusCode}) from ${url}`));
+        return;
       }
-      res.pipe(file);
-      file.on("finish", () => file.close(resolve));
+
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => resolve(Buffer.concat(chunks)));
     });
-    request.on("error", (err) => {
-      file.close(() => fs.rmSync(dest, { force: true }));
-      reject(err);
-    });
+    request.on("error", reject);
   });
 }
 
-function extract(archivePath, ext, vendorDir) {
+function extractTarFromBuffer(data, vendorDir) {
+  const out = spawnSync("tar", ["-xzf", "-", "-C", vendorDir], { input: data });
+  if (out.status !== 0) {
+    fail(`extract tar failed: ${(out.stderr || "").toString()}`);
+  }
+}
+
+function extract(archivePath, ext, vendorDir, data) {
   if (ext === "tar.gz") {
-    const out = spawnSync("tar", ["-xzf", archivePath, "-C", vendorDir]);
-    if (out.status !== 0) {
-      fail(`extract tar failed: ${(out.stderr || "").toString()}`);
-    }
+    extractTarFromBuffer(data, vendorDir);
     return;
   }
 
@@ -135,8 +142,11 @@ async function main() {
   const url = releaseUrl(asset);
 
   console.log(`[iwc postinstall] downloading ${asset}`);
-  await download(url, archivePath);
-  extract(archivePath, ext, vendorDir);
+  const data = await fetchToBuffer(url);
+  if (ext === "zip") {
+    fs.writeFileSync(archivePath, data);
+  }
+  extract(archivePath, ext, vendorDir, data);
 
   const binaryPath = resolveBinaryPath(vendorDir);
   if (process.platform !== "win32") {
