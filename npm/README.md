@@ -1,4 +1,6 @@
-# /iwc-cli
+# iwc-cli
+
+Scoped package name: `@xdfnet/iwc-cli`
 
 npm distribution package for **iWC (WeChat to Claude Code)**.
 
