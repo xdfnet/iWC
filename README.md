@@ -1,6 +1,6 @@
 # iWC — 微信 ↔ Claude Code 桥接工具
 
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go)](https://golang.org)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/xdfnet/iWC?style=flat-square)](https://github.com/xdfnet/iWC/releases/latest)
 
@@ -77,7 +77,7 @@ data_dir = "/Users/admin/.iwc"
 
 ### 方式一：Releases 下载（推荐）
 
-1. 下载 [Releases](https://github.com/xdfnet/iWC/releases) 中的 `iWC-v*.tar.gz`
+1. 下载 [Releases](https://github.com/xdfnet/iWC/releases) 中的 `iwc-v*.tar.gz`
 2. 解压并将 `iwc` 二进制文件放入 `$PATH`（如 `~/.local/bin/`）
 3. 确保可执行权限：`chmod +x iwc`
 
