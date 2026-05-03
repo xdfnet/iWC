@@ -9,7 +9,9 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -19,7 +21,7 @@ import (
 	"github.com/admin/iCode/iWC/weixin"
 )
 
-const version = "1.0.3"
+const version = "1.0.6"
 
 func main() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
@@ -307,13 +309,32 @@ func doWechatSetup(tokenStr, apiURL string, timeout int, botType string) {
 		cfg.WeChat.BaseURL = apiURL
 	} else {
 		fmt.Println("正在获取二维码...")
+		fmt.Println("步骤 1/3: 获取二维码")
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-		tok, baseURL, botID, userID, err := weixin.QRLogin(ctx, apiURL, botType, time.Duration(timeout)*time.Second)
+		var openOnce sync.Once
+		hooks := &weixin.QRLoginHooks{
+			OnQRCode: func(url string) {
+				fmt.Printf("步骤 2/3: 请扫码登录（二维码链接）\n%s\n", url)
+				openOnce.Do(func() {
+					if err := openBrowserURL(url); err == nil {
+						fmt.Println("已自动尝试在浏览器打开二维码链接")
+					}
+				})
+			},
+			OnStatus: func(message string) {
+				fmt.Printf("状态: %s\n", message)
+			},
+		}
+		tok, baseURL, botID, userID, err := weixin.QRLoginWithHooks(ctx, apiURL, botType, time.Duration(timeout)*time.Second, hooks)
 		cancel()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "❌ 扫码登录失败: %v\n", err)
+			fmt.Fprintln(os.Stderr, "建议:")
+			fmt.Fprintln(os.Stderr, "- 检查网络后重试: iwc wechat setup --timeout 600")
+			fmt.Fprintln(os.Stderr, "- 如果你已有 token，可直接使用: iwc wechat setup --token <token>")
 			os.Exit(1)
 		}
+		fmt.Println("步骤 3/3: 登录成功，正在写入配置")
 		fmt.Printf("✅ 登录成功! bot_id: %s\n", botID)
 		cfg.WeChat.Token = tok
 		cfg.WeChat.BaseURL = baseURL
@@ -330,4 +351,21 @@ func doWechatSetup(tokenStr, apiURL string, timeout int, botType string) {
 	fmt.Printf("✅ 配置已保存: %s\n", cfgPath)
 	fmt.Println()
 	fmt.Println("现在可以运行 `iwc start` 启动服务了")
+}
+
+func openBrowserURL(url string) error {
+	if strings.TrimSpace(url) == "" {
+		return fmt.Errorf("empty url")
+	}
+
+	var cmd *exec.Cmd
+	switch {
+	case runtime.GOOS == "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case runtime.GOOS == "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	return cmd.Start()
 }

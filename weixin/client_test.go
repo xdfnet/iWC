@@ -355,3 +355,21 @@ func TestIsNetworkError(t *testing.T) {
 		}
 	}
 }
+
+func TestQRStatusMessage(t *testing.T) {
+	cases := map[string]string{
+		"":          "等待扫码中...",
+		"wait":      "等待扫码中...",
+		"scaned":    "已扫码，等待手机确认...",
+		"expired":   "二维码已过期，正在刷新...",
+		"confirmed": "已确认登录，正在完成配置...",
+		"other":     "处理中...",
+	}
+
+	for input, want := range cases {
+		got := qrStatusMessage(input)
+		if got != want {
+			t.Fatalf("status %q => %q, want %q", input, got, want)
+		}
+	}
+}

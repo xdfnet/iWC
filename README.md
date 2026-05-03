@@ -25,6 +25,11 @@ iwc autostart on
 
 然后从微信向你的 ilink 机器人发送消息即可。Claude 处理期间微信会显示"正在输入中"。
 
+扫码体验优化（`iwc wechat setup`）：
+- 自动尝试在浏览器打开二维码链接（同时保留终端链接输出）
+- 终端实时显示状态（等待扫码 / 已扫码待确认 / 过期刷新）
+- 失败时给出下一步建议（如 `--timeout` 或 `--token`）
+
 ## 命令
 
 | 命令 | 说明 |
@@ -105,7 +110,7 @@ make install
 
 仓库内已提供 npm 分发包目录：`npm/`。
 
-1. 确保 GitHub Release（如 `v1.0.3`）包含以下资产：
+1. 确保 GitHub Release（如 `v1.0.6`）包含以下资产：
 - `iwc-darwin-arm64.tar.gz`
 - `iwc-darwin-amd64.tar.gz`
 - `iwc-linux-arm64.tar.gz`
@@ -113,7 +118,7 @@ make install
 - `iwc-windows-amd64.zip`
 - `iwc-windows-arm64.zip`
 
-目前已验证并发布：`iwc-darwin-arm64.tar.gz`（对应 npm `@xdfnet/iwc-cli@1.0.5`）。
+目前已验证并发布：`iwc-darwin-arm64.tar.gz`（对应 npm `@xdfnet/iwc-cli@1.0.6`）。
 
 2. 每个压缩包根目录应包含可执行文件：
 - macOS/Linux: `iwc`

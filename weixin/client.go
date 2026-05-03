@@ -190,6 +190,11 @@ type QRStatusResponse struct {
 	IlinkUserID string `json:"ilink_user_id"`
 }
 
+type QRLoginHooks struct {
+	OnQRCode func(url string)
+	OnStatus func(message string)
+}
+
 func (c *Client) GetBotQRCode(ctx context.Context, botType string) (*BotQRResponse, error) {
 	if botType == "" {
 		botType = "3"
@@ -327,6 +332,11 @@ func isNetworkError(err error) bool {
 
 // QRLogin 执行完整的扫码登录流程（命令行用）
 func QRLogin(ctx context.Context, apiBaseURL, botType string, timeout time.Duration) (token, baseURL, ilinkBotID, ilinkUserID string, err error) {
+	return QRLoginWithHooks(ctx, apiBaseURL, botType, timeout, nil)
+}
+
+// QRLoginWithHooks 执行完整的扫码登录流程（支持状态回调）
+func QRLoginWithHooks(ctx context.Context, apiBaseURL, botType string, timeout time.Duration, hooks *QRLoginHooks) (token, baseURL, ilinkBotID, ilinkUserID string, err error) {
 	c := NewClient(apiBaseURL, "")
 	if timeout < time.Second {
 		timeout = 480 * time.Second
@@ -338,6 +348,9 @@ func QRLogin(ctx context.Context, apiBaseURL, botType string, timeout time.Durat
 		return "", "", "", "", fmt.Errorf("获取二维码失败: %w", err)
 	}
 	qrURL := qrResp.QRCodeImgContent
+	if hooks != nil && hooks.OnQRCode != nil {
+		hooks.OnQRCode(qrURL)
+	}
 	log.Printf("请使用微信扫描二维码:\n%s\n", qrURL)
 
 	qrKey := qrResp.QRCode
@@ -359,8 +372,14 @@ func QRLogin(ctx context.Context, apiBaseURL, botType string, timeout time.Durat
 		}
 		switch status.Status {
 		case "wait", "":
+			if hooks != nil && hooks.OnStatus != nil {
+				hooks.OnStatus(qrStatusMessage("wait"))
+			}
 			time.Sleep(time.Second)
 		case "scaned":
+			if hooks != nil && hooks.OnStatus != nil {
+				hooks.OnStatus(qrStatusMessage("scaned"))
+			}
 			log.Println("已扫码，请在手机上确认登录…")
 			time.Sleep(time.Second)
 		case "expired":
@@ -368,17 +387,26 @@ func QRLogin(ctx context.Context, apiBaseURL, botType string, timeout time.Durat
 			if refreshCount > maxRefresh {
 				return "", "", "", "", fmt.Errorf("二维码多次过期，请重试")
 			}
+			if hooks != nil && hooks.OnStatus != nil {
+				hooks.OnStatus(qrStatusMessage("expired"))
+			}
 			log.Printf("二维码已过期，正在刷新 (%d/%d)…\n", refreshCount, maxRefresh)
 			newQR, err := c.GetBotQRCode(ctx, botType)
 			if err != nil {
 				return "", "", "", "", fmt.Errorf("刷新二维码: %w", err)
 			}
 			qrKey = newQR.QRCode
+			if hooks != nil && hooks.OnQRCode != nil {
+				hooks.OnQRCode(newQR.QRCodeImgContent)
+			}
 			log.Printf("请扫描新二维码:\n%s\n", newQR.QRCodeImgContent)
 			time.Sleep(time.Second)
 		case "confirmed":
 			if status.IlinkBotID == "" || status.BotToken == "" {
 				return "", "", "", "", fmt.Errorf("登录确认但缺少 bot_token 或 ilink_bot_id")
+			}
+			if hooks != nil && hooks.OnStatus != nil {
+				hooks.OnStatus(qrStatusMessage("confirmed"))
 			}
 			log.Println("✅ 微信登录成功")
 			baseURL := apiBaseURL
@@ -391,4 +419,19 @@ func QRLogin(ctx context.Context, apiBaseURL, botType string, timeout time.Durat
 		}
 	}
 	return "", "", "", "", fmt.Errorf("等待扫码超时")
+}
+
+func qrStatusMessage(status string) string {
+	switch status {
+	case "wait", "":
+		return "等待扫码中..."
+	case "scaned":
+		return "已扫码，等待手机确认..."
+	case "expired":
+		return "二维码已过期，正在刷新..."
+	case "confirmed":
+		return "已确认登录，正在完成配置..."
+	default:
+		return "处理中..."
+	}
 }
