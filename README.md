@@ -84,6 +84,9 @@ npm i -g @xdfnet/iwc-cli
 iwc version
 ```
 
+当前 npm 安装链路已在 `darwin-arm64`（Apple Silicon macOS）完成实测。  
+若你是其他平台，请先确认对应平台二进制资产已发布到 Releases（见下方“npm 发布（维护者）”）。
+
 ### 方式一：Releases 下载（推荐）
 
 1. 下载 [Releases](https://github.com/xdfnet/iWC/releases) 中的 `iwc-v*.tar.gz`
@@ -109,6 +112,8 @@ make install
 - `iwc-linux-amd64.tar.gz`
 - `iwc-windows-amd64.zip`
 - `iwc-windows-arm64.zip`
+
+目前已验证并发布：`iwc-darwin-arm64.tar.gz`（对应 npm `@xdfnet/iwc-cli@1.0.5`）。
 
 2. 每个压缩包根目录应包含可执行文件：
 - macOS/Linux: `iwc`
