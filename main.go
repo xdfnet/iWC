@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -99,24 +100,27 @@ func runStatus() {
 
 func isProcessRunning() bool {
 	// 检查 launchd 托管的进程
-	out, _ := exec.Command("launchctl", "print", "gui/"+fmt.Sprint(os.Getuid())+"/com.user.iwc").Output()
-	if strings.Contains(string(out), "com.user.iwc") {
+	out, err := exec.Command("launchctl", "print", "gui/"+fmt.Sprint(os.Getuid())+"/com.user.iwc").Output()
+	if err == nil && strings.Contains(string(out), "com.user.iwc") {
 		return true
 	}
 
 	// 检查 PID 文件
 	if data, err := os.ReadFile(pidFilePath()); err == nil {
-		pid := strings.TrimSpace(string(data))
-		if pid != "" {
-			// 不发信号，只检查进程是否存在
-			if exec.Command("kill", "-0", pid).Run() == nil {
-				return true
+		pidStr := strings.TrimSpace(string(data))
+		if pidStr != "" {
+			pid, parseErr := strconv.Atoi(pidStr)
+			if parseErr == nil {
+				// 不发信号，只检查进程是否存在
+				if exec.Command("kill", "-0", strconv.Itoa(pid)).Run() == nil {
+					return true
+				}
 			}
 		}
 	}
 
-	// 检查进程
-	psOut, _ := exec.Command("pgrep", "-f", "iwc start").Output()
+	// 检查进程（更精确的匹配）
+	psOut, _ := exec.Command("pgrep", "-x", "iwc").Output()
 	return len(strings.TrimSpace(string(psOut))) > 0
 }
 
@@ -191,9 +195,14 @@ func runUninstall() {
 
 	fmt.Println("🛑 停止服务...")
 	if data, err := os.ReadFile(pidFilePath()); err == nil {
-		pid := strings.TrimSpace(string(data))
-		if pid != "" {
-			exec.Command("kill", pid).Run()
+		pidStr := strings.TrimSpace(string(data))
+		if pidStr != "" {
+			pid, parseErr := strconv.Atoi(pidStr)
+			if parseErr == nil {
+				if err := exec.Command("kill", strconv.Itoa(pid)).Run(); err != nil {
+					log.Printf("停止进程 %d 失败: %v", pid, err)
+				}
+			}
 		}
 		os.Remove(pidFilePath())
 	}
@@ -320,6 +329,8 @@ func doWechatSetup(tokenStr, apiURL string, timeout int, botType string) {
 			config.Save(cfg, cfgPath)
 			fmt.Printf("📝 已设置 claude 路径: %s\n", cliPath)
 		}
+	} else {
+		fmt.Printf("⚠️ 未找到 claude 命令，请确保已安装 Claude Code: %v\n", err)
 	}
 
 	fmt.Println()

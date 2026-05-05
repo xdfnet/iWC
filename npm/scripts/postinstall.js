@@ -120,6 +120,9 @@ function resolveBinaryPath(vendorDir) {
 
   const nested = path.join(vendorDir, "build", exe);
   if (fs.existsSync(nested)) {
+    if (fs.existsSync(direct)) {
+      fs.unlinkSync(direct);
+    }
     fs.renameSync(nested, direct);
     return direct;
   }
@@ -138,7 +141,7 @@ async function main() {
   ensureDir(vendorDir);
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "iwc-cli-"));
-  const archivePath = path.join(tmpDir, `iwc.${ext === "tar.gz" ? "tar.gz" : "zip"}`);
+  const archivePath = path.join(tmpDir, `iwc.${ext}`);
   const url = releaseUrl(asset);
 
   console.log(`[iwc postinstall] downloading ${asset}`);
@@ -189,7 +192,7 @@ async function main() {
     if (setupResult.status !== 0) {
       console.log("[iwc postinstall] 扫码登录取消，请稍后运行 iwc setup");
     } else {
-      console.log("[iwc postinstall] 微信配置完成!");
+      console.log("[iwc postinstall] ✅ 微信配置完成!");
     }
   } else {
     console.log("[iwc postinstall] 检测到已配置微信，跳过扫码");
@@ -229,8 +232,12 @@ async function main() {
 </plist>
 `;
     fs.writeFileSync(plistPath, plistContent);
-    spawnSync("launchctl", ["load", "-w", plistPath], { stdio: "ignore" });
-    console.log("[iwc postinstall] 开机自启已设置");
+    const loadResult = spawnSync("launchctl", ["load", "-w", plistPath], { stdio: "ignore" });
+    if (loadResult.status !== 0) {
+      console.log("[iwc postinstall] ⚠️ 开机自启设置失败，请手动执行: launchctl load -w", plistPath);
+    } else {
+      console.log("[iwc postinstall] 开机自启已设置");
+    }
   }
 
   console.log();
