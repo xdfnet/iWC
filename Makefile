@@ -110,11 +110,12 @@ uninstall:
 
 package: build
 	@echo "$(BLUE)打包 $(PROJECT_NAME)...$(NC)"
-	rm -f $(BUILD_DIR)/$(APP_NAME)-v$(VERSION) $(BUILD_DIR)/$(APP_NAME)-v$(VERSION).tar.gz
-	cp $(BUILD_DIR)/$(APP_NAME) $(BUILD_DIR)/$(APP_NAME)-v$(VERSION)
-	cd $(BUILD_DIR) && tar czf $(APP_NAME)-v$(VERSION).tar.gz $(APP_NAME)-v$(VERSION)
-	rm $(BUILD_DIR)/$(APP_NAME)-v$(VERSION)
-	@echo "$(GREEN)打包完成: $(BUILD_DIR)/$(APP_NAME)-v$(VERSION).tar.gz$(NC)"
+	rm -f $(BUILD_DIR)/$(APP_NAME)-darwin-arm64.tar.gz
+	mkdir -p $(BUILD_DIR)/pkg
+	cp $(BUILD_DIR)/$(APP_NAME) $(BUILD_DIR)/pkg/iwc
+	cd $(BUILD_DIR)/pkg && tar czf ../$(APP_NAME)-darwin-arm64.tar.gz iwc
+	rm -rf $(BUILD_DIR)/pkg
+	@echo "$(GREEN)打包完成: $(BUILD_DIR)/$(APP_NAME)-darwin-arm64.tar.gz$(NC)"
 
 # =============================================================================
 # 发布命令
