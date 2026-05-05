@@ -13,33 +13,23 @@ iWC = **WeChat to Claude Code**。
 ## 快速开始
 
 ```bash
-# 1. 扫码登录微信
-iwc wechat setup
+# 1. 一键安装
+make install
 
-# 2. 启动服务
-iwc start
-
-# 3. 设置开机自启（可选）
-iwc autostart on
+# 2. 扫码登录微信（如需要）
+iwc setup
 ```
 
-然后从微信向你的 ilink 机器人发送消息即可。Claude 处理期间微信会显示"正在输入中"。
+安装过程自动完成：编译 → 安装 → 设置自启 → 启动服务 → 扫码配置。
 
-扫码体验优化（`iwc wechat setup`）：
-- 自动尝试在浏览器打开二维码链接（同时保留终端链接输出）
-- 终端实时显示状态（等待扫码 / 已扫码待确认 / 过期刷新）
-- 失败时给出下一步建议（如 `--timeout` 或 `--token`）
+然后从微信向你的 ilink 机器人发送消息即可。Claude 处理期间微信会显示"正在输入中"。
 
 ## 命令
 
 | 命令 | 说明 |
 |------|------|
-| `iwc start` | 启动服务 |
-| `iwc stop` | 停止服务 |
-| `iwc restart` | 重启服务 |
-| `iwc wechat setup` | 扫码登录微信 |
-| `iwc autostart on` | 设置开机自启（LaunchAgent） |
-| `iwc autostart off` | 取消开机自启 |
+| `iwc` | 查看状态 |
+| `iwc setup` | 扫码登录微信 |
 | `iwc version` | 显示版本号 |
 
 ## 架构

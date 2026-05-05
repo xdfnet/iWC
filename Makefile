@@ -32,17 +32,17 @@ help:
 	@echo "$(CYAN)iWC - 微信 ↔ Claude Code 桥接工具$(NC)"
 	@echo ""
 	@echo "$(GREEN)核心命令:$(NC)"
-	@echo "  $(YELLOW)dev$(NC)          - 构建并运行 (开发模式)"
-	@echo "  $(YELLOW)build$(NC)        - 构建二进制到 build/"
-	@echo "  $(YELLOW)install$(NC)      - 构建并安装到 ~/.local/bin"
-	@echo "  $(YELLOW)package$(NC)      - 打包 tar.gz (依赖 install)"
-	@echo "  $(YELLOW)push$(NC)         - 完整发布流程 (构建+安装+打包+版本更新+GitHub Release)"
-	@echo "  $(YELLOW)clean$(NC)        - 清理构建产物"
+	@echo "  $(YELLOW)make install$(NC)   - 一键安装（编译+安装+启动+自启）"
+	@echo "  $(YELLOW)iwc$(NC)             - 查看状态"
+	@echo "  $(YELLOW)iwc setup$(NC)       - 扫码登录微信"
+	@echo "  $(YELLOW)iwc version$(NC)      - 显示版本号"
 	@echo ""
-	@echo "$(GREEN)使用示例:$(NC)"
-	@echo "  $(CYAN)make dev$(NC)                    - 开发调试"
-	@echo "  $(CYAN)make install$(NC)                - 安装到 ~/.local/bin"
-	@echo "  $(CYAN)make push MSG=\"修复bug\"$(NC)     - 完整发布"
+	@echo "$(GREEN)开发命令:$(NC)"
+	@echo "  $(YELLOW)make dev$(NC)        - 开发调试"
+	@echo "  $(YELLOW)make build$(NC)      - 构建"
+	@echo "  $(YELLOW)make push$(NC)       - 发布"
+	@echo "  $(YELLOW)make clean$(NC)      - 清理"
+	@echo "  $(YELLOW)make uninstall$(NC)  - 卸载"
 
 # =============================================================================
 # 构建命令
@@ -66,6 +66,49 @@ install: build
 	@echo "$(BLUE)安装到 ~/.local/bin...$(NC)"
 	cp $(BUILD_DIR)/$(APP_NAME) ~/.local/bin/$(APP_NAME)
 	@echo "$(GREEN)安装完成: ~/.local/bin/$(APP_NAME)$(NC)"
+
+	@echo "$(BLUE)设置开机自启...$(NC)"
+	@mkdir -p ~/Library/LaunchAgents
+	@printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>Label</key>\n    <string>com.user.iwc</string>\n    <key>ProgramArguments</key>\n    <array>\n        <string>%s</string>\n        <string>start</string>\n    </array>\n    <key>RunAtLoad</key>\n    <true/>\n    <key>KeepAlive</key>\n    <true/>\n    <key>StandardOutPath</key>\n    <string>%s</string>\n    <key>StandardErrorPath</key>\n    <string>%s</string>\n</dict>\n</plist>\n' "$(HOME)/.local/bin/iwc" "$(HOME)/.config/iwc/iwc.log" "$(HOME)/.config/iwc/iwc_error.log" > ~/Library/LaunchAgents/com.user.iwc.plist
+	@launchctl load -w ~/Library/LaunchAgents/com.user.iwc.plist 2>/dev/null || true
+	@echo "$(GREEN)开机自启已设置$(NC)"
+
+	@echo ""
+	@CONFIG_PATH="$(HOME)/.config/iwc/config.toml"; \
+	if [ ! -f "$$CONFIG_PATH" ] || grep -q 'token = ""' "$$CONFIG_PATH" 2>/dev/null; then \
+		echo "$(YELLOW)检测到未配置微信，开始扫码登录...$(NC)"; \
+		echo ""; \
+		go run . setup; \
+	else \
+		echo "$(GREEN)检测到已配置微信，跳过扫码$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(BLUE)启动服务...$(NC)"
+	@launchctl start com.user.iwc >/dev/null 2>&1 || true
+	@echo "$(GREEN)✅ 安装完成!$(NC)"
+	@echo "$(CYAN)向微信发消息试试吧！$(NC)"
+
+# =============================================================================
+# 卸载命令
+# =============================================================================
+
+uninstall:
+	@echo "$(BLUE)停止服务...$(NC)"
+	-@launchctl unload -w ~/Library/LaunchAgents/com.user.iwc.plist 2>/dev/null || true
+	-@pkill -f "iwc start" 2>/dev/null || true
+	@echo "$(BLUE)删除开机自启...$(NC)"
+	-@rm -f ~/Library/LaunchAgents/com.user.iwc.plist
+	@echo "$(BLUE)删除二进制...$(NC)"
+	-@rm -f ~/.local/bin/iwc
+	@echo ""
+	@echo -n "$(YELLOW)是否删除配置和数据 (~/.config/iwc)？[y/N]: $(NC)"
+	@read -r ans; \
+	if [ "$$ans" = "y" ] || [ "$$ans" = "Y" ]; then \
+		rm -rf ~/.config/iwc; \
+		echo "$(GREEN)✅ 已删除配置和数据$(NC)"; \
+	else \
+		echo "$(GREEN)✅ 卸载完成（配置保留在 ~/.config/iwc）$(NC)"; \
+	fi
 
 # =============================================================================
 # 打包命令

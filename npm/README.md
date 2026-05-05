@@ -10,12 +10,14 @@ npm distribution package for **iWC (WeChat to Claude Code)**.
 npm i -g @xdfnet/iwc-cli
 ```
 
+安装过程自动完成：下载二进制 → 检测配置 → 扫码（如需要）。
+
 ## Usage
 
 ```bash
-iwc version
-iwc wechat setup
-iwc start
+iwc           # 查看状态
+iwc setup     # 扫码登录微信
+iwc version   # 显示版本号
 ```
 
 ## How it works
@@ -23,6 +25,7 @@ iwc start
 - `postinstall` downloads platform binary from GitHub Releases.
 - Binary is stored under this package's `vendor/` directory.
 - `iwc` command proxies all args to that binary.
+- 首次安装自动检测并弹出扫码，无额外操作。
 
 ## Required release assets
 

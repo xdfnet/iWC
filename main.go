@@ -27,21 +27,15 @@ func main() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
 	if len(os.Args) < 2 {
-		printUsage()
+		runStatus()
 		return
 	}
 
 	switch os.Args[1] {
-	case "start":
-		run()
-	case "stop":
-		runStop()
-	case "restart":
-		runRestart()
-	case "wechat", "weixin":
-		runWechatCmd(os.Args[2:])
-	case "autostart":
-		runAutostartCmd(os.Args[2:])
+	case "status":
+		runStatus()
+	case "setup":
+		doWechatSetup("", "", 480, "3")
 	case "version", "--version", "-v":
 		fmt.Printf("iWC v%s\n", version)
 	case "help", "--help", "-h":
@@ -57,18 +51,67 @@ func printUsage() {
 	fmt.Println(`iWC - 微信个人号 ↔ Claude Code 桥接工具
 
 用法:
-  iwc start             启动服务
-  iwc stop              停止服务
-  iwc restart           重启服务
-  iwc wechat setup      扫码登录微信
-  iwc autostart on      设置开机自启
-  iwc autostart off     取消开机自启
-  iwc version           显示版本号
+  iwc            查看状态
+  iwc setup      扫码登录微信
+  iwc version    显示版本号
 
-首次使用:
-  1. iwc wechat setup     # 扫码登录
-  2. iwc autostart on     # 设置开机自启（可选）
-  3. iwc start            # 启动服务`)
+安装:
+  make install   一键安装（编译+安装+启动+自启）`)
+}
+
+// --- status ---
+
+func runStatus() {
+	// 检查进程
+	running := isProcessRunning()
+
+	// 检查配置
+	cfg, err := config.Load("")
+	configOK := err == nil && cfg.WeChat.Token != ""
+
+	fmt.Printf("iWC v%s\n\n", version)
+
+	if running {
+		fmt.Println("🟢 服务运行中")
+	} else {
+		fmt.Println("🔴 服务未运行")
+	}
+
+	if configOK {
+		fmt.Println("🟢 微信已配置")
+	} else {
+		fmt.Println("🔴 微信未配置（运行 iwc setup）")
+	}
+
+	fmt.Println()
+	if !running && !configOK {
+		fmt.Println("运行 make install 开始使用")
+	} else if !running {
+		fmt.Println("运行 make install 启动服务")
+	} else {
+		fmt.Println("向微信发消息试试吧！")
+	}
+}
+
+func isProcessRunning() bool {
+	// 检查 launchctl
+	out, _ := exec.Command("launchctl", "list", "com.user.iwc").Output()
+	if strings.Contains(string(out), "com.user.iwc") {
+		return true
+	}
+
+	// 检查 PID 文件
+	pidPath := pidFilePath()
+	if data, err := os.ReadFile(pidPath); err == nil {
+		pid := strings.TrimSpace(string(data))
+		if pid != "" {
+			exec.Command("kill", "-0", pid).Run() // 不发送信号，只检查
+		}
+	}
+
+	// 检查进程
+	psOut, _ := exec.Command("pgrep", "-f", "iwc start").Output()
+	return len(strings.TrimSpace(string(psOut))) > 0
 }
 
 // --- start ---
@@ -187,6 +230,7 @@ func plistPath() string {
 func plistContent() string {
 	home, _ := os.UserHomeDir()
 	binary := filepath.Join(home, ".local", "bin", "iwc")
+	logDir := filepath.Join(home, ".config", "iwc")
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -203,12 +247,12 @@ func plistContent() string {
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/tmp/iwc_stdout.log</string>
+    <string>%s/iwc.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/iwc_stderr.log</string>
+    <string>%s/iwc_error.log</string>
 </dict>
 </plist>
-`, binary)
+`, binary, logDir, logDir)
 }
 
 func runAutostartCmd(args []string) {

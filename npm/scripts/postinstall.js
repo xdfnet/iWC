@@ -154,6 +154,36 @@ async function main() {
   }
 
   console.log("[iwc postinstall] installed", path.basename(binaryPath));
+
+  // 检查是否已配置微信
+  const configPath = path.join(os.homedir(), ".iwc", "config.toml");
+  let needSetup = true;
+  if (fs.existsSync(configPath)) {
+    const content = fs.readFileSync(configPath, "utf8");
+    if (content.includes('token = "') && !content.includes('token = ""')) {
+      needSetup = false;
+    }
+  }
+
+  console.log();
+  if (needSetup) {
+    console.log("[iwc postinstall] 检测到未配置微信，开始扫码登录...");
+    console.log();
+    const iwcPath = binaryPath;
+    const setupResult = spawnSync(iwcPath, ["setup"], {
+      stdio: "inherit",
+      shell: process.platform === "win32"
+    });
+    if (setupResult.status !== 0) {
+      console.log("[iwc postinstall] 扫码登录取消，请稍后运行 iwc setup");
+    } else {
+      console.log("[iwc postinstall] 微信配置完成!");
+    }
+  } else {
+    console.log("[iwc postinstall] 检测到已配置微信，跳过扫码");
+  }
+  console.log();
+  console.log("[iwc postinstall] 安装完成! 向微信发消息试试吧");
 }
 
 main().catch((err) => fail(err.message));

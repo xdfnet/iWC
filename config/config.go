@@ -47,7 +47,7 @@ func DefaultConfig() *Config {
 			WorkDir: home,
 		},
 		System: SystemConfig{
-			DataDir: filepath.Join(home, ".iwc"),
+			DataDir: filepath.Join(home, ".config", "iwc"),
 		},
 	}
 }
@@ -62,7 +62,7 @@ func ConfigPath() string {
 		return p
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".iwc", "config.toml")
+	return filepath.Join(home, ".config", "iwc", "config.toml")
 }
 
 // Load 加载配置文件
@@ -73,8 +73,20 @@ func Load(path string) (*Config, error) {
 		path = ConfigPath()
 	}
 
+	// 迁移旧配置到新位置
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return cfg, fmt.Errorf("配置文件不存在: %s\n请先运行 `iwc wechat setup`", path)
+		oldPath := filepath.Join(os.Getenv("HOME"), ".iwc", "config.toml")
+		if _, err := os.Stat(oldPath); err == nil {
+			fmt.Fprintf(os.Stderr, "ℹ️ 检测到旧配置，正在迁移到 %s\n", path)
+			if data, err := os.ReadFile(oldPath); err == nil {
+				os.MkdirAll(filepath.Dir(path), 0755)
+				os.WriteFile(path, data, 0644)
+			}
+		}
+	}
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return cfg, fmt.Errorf("配置文件不存在: %s\n请先运行 `iwc setup`", path)
 	}
 
 	md, err := toml.DecodeFile(path, cfg)
