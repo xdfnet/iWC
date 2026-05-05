@@ -95,20 +95,14 @@ install: build
 uninstall:
 	@echo "$(BLUE)停止服务...$(NC)"
 	-@launchctl unload -w ~/Library/LaunchAgents/com.user.iwc.plist 2>/dev/null || true
-	-@pkill -f "iwc start" 2>/dev/null || true
 	@echo "$(BLUE)删除开机自启...$(NC)"
 	-@rm -f ~/Library/LaunchAgents/com.user.iwc.plist
 	@echo "$(BLUE)删除二进制...$(NC)"
 	-@rm -f ~/.local/bin/iwc
+	@echo "$(BLUE)删除配置和数据...$(NC)"
+	-@rm -rf ~/.config/iwc
 	@echo ""
-	@echo -n "$(YELLOW)是否删除配置和数据 (~/.config/iwc)？[y/N]: $(NC)"
-	@read -r ans; \
-	if [ "$$ans" = "y" ] || [ "$$ans" = "Y" ]; then \
-		rm -rf ~/.config/iwc; \
-		echo "$(GREEN)✅ 已删除配置和数据$(NC)"; \
-	else \
-		echo "$(GREEN)✅ 卸载完成（配置保留在 ~/.config/iwc）$(NC)"; \
-	fi
+	@echo "$(GREEN)✅ 卸载完成$(NC)"
 
 # =============================================================================
 # 打包命令

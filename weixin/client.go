@@ -77,9 +77,7 @@ func (c *Client) GetUpdates(ctx context.Context, buf string, timeoutMs int) (*ge
 
 // SendText 发送文本消息给指定用户
 func (c *Client) SendText(ctx context.Context, to, text, contextToken, clientID string) error {
-	if strings.TrimSpace(contextToken) == "" {
-		return fmt.Errorf("context_token is required")
-	}
+	// contextToken 允许为空（setup阶段可能还没有）
 	if clientID == "" {
 		clientID = "iwc-" + randomHex(6)
 	}

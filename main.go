@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -36,6 +35,10 @@ func main() {
 		runStatus()
 	case "setup":
 		doWechatSetup("", "", 480, "3")
+	case "start":
+		runService()
+	case "uninstall":
+		runUninstall()
 	case "version", "--version", "-v":
 		fmt.Printf("iWC v%s\n", version)
 	case "help", "--help", "-h":
@@ -53,6 +56,7 @@ func printUsage() {
 用法:
   iwc            查看状态
   iwc setup      扫码登录微信
+  iwc uninstall  卸载
   iwc version    显示版本号
 
 安装:
@@ -94,18 +98,20 @@ func runStatus() {
 }
 
 func isProcessRunning() bool {
-	// 检查 launchctl
-	out, _ := exec.Command("launchctl", "list", "com.user.iwc").Output()
+	// 检查 launchd 托管的进程
+	out, _ := exec.Command("launchctl", "print", "gui/"+fmt.Sprint(os.Getuid())+"/com.user.iwc").Output()
 	if strings.Contains(string(out), "com.user.iwc") {
 		return true
 	}
 
 	// 检查 PID 文件
-	pidPath := pidFilePath()
-	if data, err := os.ReadFile(pidPath); err == nil {
+	if data, err := os.ReadFile(pidFilePath()); err == nil {
 		pid := strings.TrimSpace(string(data))
 		if pid != "" {
-			exec.Command("kill", "-0", pid).Run() // 不发送信号，只检查
+			// 不发信号，只检查进程是否存在
+			if exec.Command("kill", "-0", pid).Run() == nil {
+				return true
+			}
 		}
 	}
 
@@ -116,7 +122,7 @@ func isProcessRunning() bool {
 
 // --- start ---
 
-func run() {
+func runService() {
 	cfg, err := config.Load("")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %v\n", err)
@@ -124,7 +130,7 @@ func run() {
 	}
 
 	if cfg.WeChat.Token == "" {
-		fmt.Fprintln(os.Stderr, "❌ 未配置微信 token，请先运行: iwc wechat setup")
+		fmt.Fprintln(os.Stderr, "❌ 未配置微信 token，请先运行: iwc setup")
 		os.Exit(1)
 	}
 
@@ -174,48 +180,36 @@ func run() {
 
 func pidFilePath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".iwc", "iwc.pid")
+	return filepath.Join(home, ".config", "iwc", "iwc.pid")
 }
 
-// --- stop ---
+// --- uninstall ---
 
-func runStop() {
-	stopped := false
+func runUninstall() {
+	home, _ := os.UserHomeDir()
+	binaryPath := filepath.Join(home, ".local", "bin", "iwc")
 
-	// 尝试通过 launchctl 停止（autostart 模式）
-	plist := plistPath()
-	if _, err := os.Stat(plist); err == nil {
-		out, _ := exec.Command("launchctl", "stop", "com.user.iwc").CombinedOutput()
-		if len(out) > 0 {
-			fmt.Print(string(out))
-		}
-		stopped = true
-	}
-
-	// 通过 PID 文件停止手动启动的进程
-	pidPath := pidFilePath()
-	if data, err := os.ReadFile(pidPath); err == nil {
+	fmt.Println("🛑 停止服务...")
+	if data, err := os.ReadFile(pidFilePath()); err == nil {
 		pid := strings.TrimSpace(string(data))
 		if pid != "" {
 			exec.Command("kill", pid).Run()
-			os.Remove(pidPath)
-			stopped = true
 		}
+		os.Remove(pidFilePath())
 	}
+	exec.Command("launchctl", "unload", "-w", plistPath()).Run()
 
-	if stopped {
-		fmt.Println("✅ iWC 已停止")
-	} else {
-		fmt.Println("ℹ️  iWC 未在运行")
-	}
-}
+	fmt.Println("📦 删除开机自启...")
+	os.Remove(plistPath())
 
-// --- restart ---
+	fmt.Println("🗑️  删除二进制...")
+	os.Remove(binaryPath)
 
-func runRestart() {
-	runStop()
-	time.Sleep(500 * time.Millisecond)
-	run()
+	fmt.Println("🗑️  删除配置和数据...")
+	os.RemoveAll(filepath.Join(home, ".config", "iwc"))
+
+	fmt.Println()
+	fmt.Println("✅ 卸载完成")
 }
 
 // --- 开机自启 ---
@@ -253,81 +247,6 @@ func plistContent() string {
 </dict>
 </plist>
 `, binary, logDir, logDir)
-}
-
-func runAutostartCmd(args []string) {
-	if len(args) == 0 {
-		fmt.Println(`用法:
-  iwc autostart on     设置开机自启
-  iwc autostart off    取消开机自启`)
-		return
-	}
-
-	switch args[0] {
-	case "on", "enable":
-		path := plistPath()
-		dir := filepath.Dir(path)
-		os.MkdirAll(dir, 0755)
-
-		if err := os.WriteFile(path, []byte(plistContent()), 0644); err != nil {
-			fmt.Fprintf(os.Stderr, "❌ 写入 plist 失败: %v\n", err)
-			os.Exit(1)
-		}
-
-		out, err := exec.Command("launchctl", "load", "-w", path).CombinedOutput()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "❌ launchctl load 失败: %v\n%s", err, string(out))
-			os.Exit(1)
-		}
-
-		fmt.Println("✅ 开机自启已开启")
-		fmt.Printf("   plist: %s\n", path)
-
-	case "off", "disable":
-		path := plistPath()
-
-		out, err := exec.Command("launchctl", "unload", "-w", path).CombinedOutput()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "❌ launchctl unload 失败: %v\n%s", err, string(out))
-			os.Exit(1)
-		}
-
-		os.Remove(path)
-		fmt.Println("✅ 开机自启已关闭")
-
-	default:
-		fmt.Fprintf(os.Stderr, "未知参数: %s\n用法: iwc autostart on|off\n", args[0])
-		os.Exit(1)
-	}
-}
-
-// --- 微信设置 ---
-
-func runWechatCmd(args []string) {
-	if len(args) == 0 {
-		fmt.Println(`微信命令:
-  iwc wechat setup    扫码登录并生成配置
-  iwc wechat help     显示帮助`)
-		return
-	}
-
-	switch args[0] {
-	case "setup", "new", "bind":
-		fs := flag.NewFlagSet("wechat setup", flag.ExitOnError)
-		token := fs.String("token", "", "已有 Bearer token（跳过扫码）")
-		apiURL := fs.String("api-url", "https://ilinkai.weixin.qq.com", "ilink API 地址")
-		timeout := fs.Int("timeout", 480, "扫码等待超时秒数")
-		botType := fs.String("bot-type", "3", "bot_type")
-		_ = fs.Parse(args[1:])
-		doWechatSetup(*token, *apiURL, *timeout, *botType)
-	case "help", "--help", "-h":
-		fmt.Println(`用法:
-  iwc wechat setup                 扫码登录
-  iwc wechat setup --token <tok>  使用已有 token
-  iwc wechat setup --api-url ...  自定义 API 地址`)
-	default:
-		fmt.Fprintf(os.Stderr, "未知子命令: %s\n", args[0])
-	}
 }
 
 func doWechatSetup(tokenStr, apiURL string, timeout int, botType string) {
@@ -394,7 +313,7 @@ func doWechatSetup(tokenStr, apiURL string, timeout int, botType string) {
 	}
 	fmt.Printf("✅ 配置已保存: %s\n", cfgPath)
 	fmt.Println()
-	fmt.Println("现在可以运行 `iwc start` 启动服务了")
+	fmt.Println("🎉 配置完成！向微信发消息试试吧")
 }
 
 func openBrowserURL(url string) error {
