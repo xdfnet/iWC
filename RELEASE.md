@@ -28,13 +28,12 @@ npm install
 IWC_SKIP_DOWNLOAD=1 npm run check  # 验证脚本语法
 
 # 3. 提交代码
-cd /Users/admin/iCode/iWC
 git add -A && git commit -m "release: v1.x.x"
 git push
 
 # 4. 构建并创建 GitHub Release（二进制文件名必须是 iwc-darwin-arm64.tar.gz）
-go build -o build/iwc .
-tar czf build/iwc-darwin-arm64.tar.gz -C build iwc
+make package
+mv build/iwc-v*.tar.gz build/iwc-darwin-arm64.tar.gz
 gh release create v1.x.x build/iwc-darwin-arm64.tar.gz --title "v1.x.x" --notes "更新说明"
 
 # 5. 发布 npm
