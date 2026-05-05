@@ -20,7 +20,7 @@ import (
 	"github.com/admin/iCode/iWC/weixin"
 )
 
-const version = "1.0.10"
+const version = "1.0.11"
 
 func main() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
