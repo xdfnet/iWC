@@ -1,6 +1,6 @@
 {
   "name": "@xdfnet/iwc-cli",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "iWC (WeChat to Claude Code) CLI distributor for npm",
   "license": "MIT",
   "repository": {

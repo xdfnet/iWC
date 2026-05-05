@@ -155,9 +155,14 @@ async function main() {
 
   console.log("[iwc postinstall] installed", path.basename(binaryPath));
 
-  // 检查是否已配置微信
-  const configPath = path.join(os.homedir(), ".iwc", "config.toml");
+  // 检查是否已配置微信（支持新旧两个路径）
+  const configPathNew = path.join(os.homedir(), ".config", "iwc", "config.toml");
+  const configPathOld = path.join(os.homedir(), ".iwc", "config.toml");
   let needSetup = true;
+  let configPath = configPathNew;
+  if (!fs.existsSync(configPathNew) && fs.existsSync(configPathOld)) {
+    configPath = configPathOld;
+  }
   if (fs.existsSync(configPath)) {
     const content = fs.readFileSync(configPath, "utf8");
     if (content.includes('token = "') && !content.includes('token = ""')) {
@@ -182,6 +187,45 @@ async function main() {
   } else {
     console.log("[iwc postinstall] 检测到已配置微信，跳过扫码");
   }
+
+  // 设置 launchd plist（macOS）
+  if (process.platform === "darwin") {
+    console.log();
+    console.log("[iwc postinstall] 设置开机自启...");
+    const home = os.homedir();
+    const plistDir = path.join(home, "Library", "LaunchAgents");
+    const plistPath = path.join(plistDir, "com.user.iwc.plist");
+    const logDir = path.join(home, ".config", "iwc");
+    ensureDir(plistDir);
+    ensureDir(logDir);
+
+    const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.iwc</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${binaryPath}</string>
+        <string>start</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>${logDir}/iwc.log</string>
+    <key>StandardErrorPath</key>
+    <string>${logDir}/iwc_error.log</string>
+</dict>
+</plist>
+`;
+    fs.writeFileSync(plistPath, plistContent);
+    spawnSync("launchctl", ["load", "-w", plistPath], { stdio: "ignore" });
+    console.log("[iwc postinstall] 开机自启已设置");
+  }
+
   console.log();
   console.log("[iwc postinstall] 安装完成! 向微信发消息试试吧");
 }
