@@ -20,7 +20,7 @@ import (
 	"github.com/admin/iCode/iWC/weixin"
 )
 
-const version = "1.0.8"
+const version = "1.0.10"
 
 func main() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
@@ -312,6 +312,16 @@ func doWechatSetup(tokenStr, apiURL string, timeout int, botType string) {
 		os.Exit(1)
 	}
 	fmt.Printf("✅ 配置已保存: %s\n", cfgPath)
+
+	// 检测 claude 路径并更新配置
+	if cliPath, err := exec.LookPath("claude"); err == nil {
+		if cliPath != cfg.Claude.CLIPath {
+			cfg.Claude.CLIPath = cliPath
+			config.Save(cfg, cfgPath)
+			fmt.Printf("📝 已设置 claude 路径: %s\n", cliPath)
+		}
+	}
+
 	fmt.Println()
 	fmt.Println("🎉 配置完成！向微信发消息试试吧")
 }
