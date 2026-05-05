@@ -142,13 +142,20 @@ async function main() {
   const url = releaseUrl(asset);
 
   console.log(`[iwc postinstall] downloading ${asset}`);
-  const data = await fetchToBuffer(url);
-  if (ext === "zip") {
-    fs.writeFileSync(archivePath, data);
-  }
-  extract(archivePath, ext, vendorDir, data);
 
-  const binaryPath = resolveBinaryPath(vendorDir);
+  // 使用 curl 下载（更可靠）
+  const curlResult = spawnSync("curl", ["-L", "-o", archivePath, url], { stdio: "inherit" });
+  if (curlResult.status !== 0) {
+    fail(`download failed from ${url}`);
+  }
+
+  const binaryPath = path.join(vendorDir, process.platform === "win32" ? "iwc.exe" : "iwc");
+  if (ext === "tar.gz") {
+    spawnSync("tar", ["-xzf", archivePath, "-C", vendorDir]);
+  } else {
+    spawnSync("unzip", ["-o", archivePath, "-d", vendorDir]);
+  }
+
   if (process.platform !== "win32") {
     fs.chmodSync(binaryPath, 0o755);
   }
