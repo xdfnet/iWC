@@ -24,6 +24,7 @@ import (
 const version = "1.2.0"
 
 func main() {
+	log.SetOutput(os.Stdout)
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
 	// launchd 启动时无参数直接运行服务；普通用户执行 iwc 仍然查看状态。
