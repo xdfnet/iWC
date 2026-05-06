@@ -2,6 +2,8 @@
 
 # Build
 build/
+npm/vendor/iwc
+npm/vendor/iwc.exe
 icc
 icc.exe
 icc-*.tar.gz
