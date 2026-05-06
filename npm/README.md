@@ -1,6 +1,6 @@
 # iWC
 
-![Version](https://img.shields.io/badge/version-1.0.13-blue)
+![Version](https://img.shields.io/badge/version-1.0.14-blue)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Platform](https://img.shields.io/badge/platform-macOS-green)
 
