@@ -106,7 +106,6 @@ iwc version
 iwc              # 查看状态
 iwc status       # 查看状态
 iwc setup        # 扫码登录微信
-iwc start        # 前台启动服务（通常由 launchd 调用）
 iwc uninstall    # 卸载服务、二进制和本地配置
 iwc version      # 版本
 iwc help         # 帮助
@@ -144,7 +143,7 @@ data_dir = "/Users/admin/.config/iwc"
 make build      # 编译 iwc
 make install    # 安装并设置 launchd 自启
 make dev        # 构建后前台启动
-make run        # go run . start
+make run        # 前台运行服务
 make package    # 打包 release tar.gz
 make uninstall  # 卸载服务和配置
 make clean      # 清理构建产物

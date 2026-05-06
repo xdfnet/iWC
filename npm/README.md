@@ -50,7 +50,6 @@ npm i -g @xdfnet/iwc-cli
 iwc              # 查看状态
 iwc status       # 查看状态
 iwc setup        # 扫码登录微信
-iwc start        # 前台启动服务（通常由 launchd 调用）
 iwc uninstall    # 卸载服务、二进制和本地配置
 iwc version      # 版本
 iwc help         # 帮助

@@ -1,6 +1,6 @@
 {
   "name": "@xdfnet/iwc-cli",
-  "version": "1.0.14",
+  "version": "1.2.0",
   "description": "iWC (WeChat to Claude Code) CLI distributor for npm",
   "license": "MIT",
   "repository": {
@@ -15,6 +15,13 @@
   "bin": {
     "iwc": "bin/iwc.js"
   },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64",
+    "x64"
+  ],
   "files": [
     "bin",
     "scripts",

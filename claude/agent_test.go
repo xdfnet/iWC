@@ -99,6 +99,25 @@ func TestSendSimple(t *testing.T) {
 	}
 }
 
+func TestSendWithSessionJSONError(t *testing.T) {
+	cliPath := writeTestCLI(t, "#!/bin/sh\ncat >/dev/null\nprintf '{\"is_error\":true,\"error\":\"permission denied\",\"session_id\":\"error-session\"}'\n")
+	agent := NewAgent("", cliPath)
+
+	got, sessID, err := agent.SendWithSession(context.Background(), "hello", "")
+	if err == nil {
+		t.Fatal("SendWithSession returned nil error")
+	}
+	if got != "" {
+		t.Fatalf("got %q, want empty response", got)
+	}
+	if sessID != "error-session" {
+		t.Fatalf("sessionID = %q, want error-session", sessID)
+	}
+	if !strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("error = %q, want permission denied", err)
+	}
+}
+
 func TestNewUUIDFormat(t *testing.T) {
 	id, err := newUUID()
 	if err != nil {

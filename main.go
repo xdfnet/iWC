@@ -21,12 +21,12 @@ import (
 	"github.com/admin/iCode/iWC/weixin"
 )
 
-const version = "1.1.0"
+const version = "1.2.0"
 
 func main() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
-	// launchd 启动时无参数直接运行服务
+	// launchd 启动时无参数直接运行服务；普通用户执行 iwc 仍然查看状态。
 	if os.Getenv("IWC_LAUNCHD") == "1" {
 		runService()
 		return
@@ -128,7 +128,7 @@ func isProcessRunning() bool {
 	return len(strings.TrimSpace(string(psOut))) > 0
 }
 
-// --- start ---
+// --- service ---
 
 func runService() {
 	cfg, err := config.Load("")
@@ -244,10 +244,14 @@ func plistContent() string {
 <dict>
     <key>Label</key>
     <string>com.user.iwc</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>IWC_LAUNCHD</key>
+        <string>1</string>
+    </dict>
     <key>ProgramArguments</key>
     <array>
         <string>%s</string>
-        <string>start</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

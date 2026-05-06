@@ -14,14 +14,6 @@ const targetMap = {
   darwin: {
     arm64: { ext: "tar.gz", asset: "iwc-darwin-arm64.tar.gz" },
     x64: { ext: "tar.gz", asset: "iwc-darwin-amd64.tar.gz" }
-  },
-  linux: {
-    arm64: { ext: "tar.gz", asset: "iwc-linux-arm64.tar.gz" },
-    x64: { ext: "tar.gz", asset: "iwc-linux-amd64.tar.gz" }
-  },
-  win32: {
-    x64: { ext: "zip", asset: "iwc-windows-amd64.zip" },
-    arm64: { ext: "zip", asset: "iwc-windows-arm64.zip" }
   }
 };
 
@@ -39,7 +31,7 @@ function getTarget() {
   const arch = process.arch;
   const entry = targetMap[platform] && targetMap[platform][arch];
   if (!entry) {
-    fail(`unsupported platform: ${platform}/${arch}`);
+    fail(`unsupported platform: ${platform}/${arch}; iWC npm package currently supports macOS arm64/x64 only`);
   }
   return { platform, arch, ...entry };
 }
@@ -215,10 +207,14 @@ async function main() {
 <dict>
     <key>Label</key>
     <string>com.user.iwc</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>IWC_LAUNCHD</key>
+        <string>1</string>
+    </dict>
     <key>ProgramArguments</key>
     <array>
         <string>${binaryPath}</string>
-        <string>start</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

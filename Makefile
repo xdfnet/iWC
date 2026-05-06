@@ -56,21 +56,24 @@ build:
 
 dev: build
 	@echo "$(BLUE)启动 $(PROJECT_NAME)...$(NC)"
-	./$(BUILD_DIR)/$(APP_NAME) start
+	IWC_LAUNCHD=1 ./$(BUILD_DIR)/$(APP_NAME)
 
 run:
 	@echo "$(BLUE)运行 $(PROJECT_NAME)...$(NC)"
-	go run . start
+	IWC_LAUNCHD=1 go run .
 
 install: build
+	@echo "$(BLUE)停止现有进程...$(NC)"
+	-pkill -x iwc 2>/dev/null || true
+	-launchctl unload -w ~/Library/LaunchAgents/com.user.iwc.plist 2>/dev/null || true
 	@echo "$(BLUE)安装到 ~/.local/bin...$(NC)"
 	cp $(BUILD_DIR)/$(APP_NAME) ~/.local/bin/$(APP_NAME)
 	@echo "$(GREEN)安装完成: ~/.local/bin/$(APP_NAME)$(NC)"
 
 	@echo "$(BLUE)设置开机自启...$(NC)"
 	@mkdir -p ~/Library/LaunchAgents
-	@printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>Label</key>\n    <string>com.user.iwc</string>\n    <key>ProgramArguments</key>\n    <array>\n        <string>%s</string>\n        <string>start</string>\n    </array>\n    <key>RunAtLoad</key>\n    <true/>\n    <key>KeepAlive</key>\n    <true/>\n    <key>StandardOutPath</key>\n    <string>%s</string>\n    <key>StandardErrorPath</key>\n    <string>%s</string>\n</dict>\n</plist>\n' "$(HOME)/.local/bin/iwc" "$(HOME)/.config/iwc/iwc.log" "$(HOME)/.config/iwc/iwc_error.log" > ~/Library/LaunchAgents/com.user.iwc.plist
-	@launchctl load -w ~/Library/LaunchAgents/com.user.iwc.plist 2>/dev/null || true
+	@printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>Label</key>\n    <string>com.user.iwc</string>\n    <key>EnvironmentVariables</key>\n    <dict>\n        <key>IWC_LAUNCHD</key>\n        <string>1</string>\n    </dict>\n    <key>ProgramArguments</key>\n    <array>\n        <string>%s</string>\n    </array>\n    <key>RunAtLoad</key>\n    <true/>\n    <key>KeepAlive</key>\n    <true/>\n    <key>StandardOutPath</key>\n    <string>%s</string>\n    <key>StandardErrorPath</key>\n    <string>%s</string>\n</dict>\n</plist>\n' "$(HOME)/.local/bin/iwc" "$(HOME)/.config/iwc/iwc.log" "$(HOME)/.config/iwc/iwc_error.log" > ~/Library/LaunchAgents/com.user.iwc.plist
+	launchctl load -w ~/Library/LaunchAgents/com.user.iwc.plist
 	@echo "$(GREEN)开机自启已设置$(NC)"
 
 	@echo ""
@@ -83,8 +86,6 @@ install: build
 		echo "$(GREEN)检测到已配置微信，跳过扫码$(NC)"; \
 	fi
 	@echo ""
-	@echo "$(BLUE)启动服务...$(NC)"
-	@launchctl start com.user.iwc >/dev/null 2>&1 || true
 	@echo "$(GREEN)✅ 安装完成!$(NC)"
 	@echo "$(CYAN)向微信发消息试试吧！$(NC)"
 
@@ -108,14 +109,16 @@ uninstall:
 # 打包命令
 # =============================================================================
 
-package: build
+package:
 	@echo "$(BLUE)打包 $(PROJECT_NAME)...$(NC)"
-	rm -f $(BUILD_DIR)/$(APP_NAME)-darwin-arm64.tar.gz
-	mkdir -p $(BUILD_DIR)/pkg
-	cp $(BUILD_DIR)/$(APP_NAME) $(BUILD_DIR)/pkg/iwc
-	cd $(BUILD_DIR)/pkg && tar czf ../$(APP_NAME)-darwin-arm64.tar.gz iwc
-	rm -rf $(BUILD_DIR)/pkg
-	@echo "$(GREEN)打包完成: $(BUILD_DIR)/$(APP_NAME)-darwin-arm64.tar.gz$(NC)"
+	rm -f $(BUILD_DIR)/$(APP_NAME)-darwin-arm64.tar.gz $(BUILD_DIR)/$(APP_NAME)-darwin-amd64.tar.gz
+	mkdir -p $(BUILD_DIR)/pkg-darwin-arm64 $(BUILD_DIR)/pkg-darwin-amd64
+	GOOS=darwin GOARCH=arm64 go build -o $(BUILD_DIR)/pkg-darwin-arm64/iwc .
+	GOOS=darwin GOARCH=amd64 go build -o $(BUILD_DIR)/pkg-darwin-amd64/iwc .
+	cd $(BUILD_DIR)/pkg-darwin-arm64 && tar czf ../$(APP_NAME)-darwin-arm64.tar.gz iwc
+	cd $(BUILD_DIR)/pkg-darwin-amd64 && tar czf ../$(APP_NAME)-darwin-amd64.tar.gz iwc
+	rm -rf $(BUILD_DIR)/pkg-darwin-arm64 $(BUILD_DIR)/pkg-darwin-amd64
+	@echo "$(GREEN)打包完成: $(BUILD_DIR)/$(APP_NAME)-darwin-arm64.tar.gz, $(BUILD_DIR)/$(APP_NAME)-darwin-amd64.tar.gz$(NC)"
 
 # =============================================================================
 # 发布命令
@@ -142,7 +145,8 @@ _update_version:
 	NEW_VERSION="$$MAJOR.$$MINOR.$$NEW_PATCH"; \
 	echo "$(CYAN)当前版本: $$CURRENT -> 新版本: $$NEW_VERSION$(NC)"; \
 	sed -i '' "s/const version = \"[^\"]*\"/const version = \"$$NEW_VERSION\"/" main.go; \
-	echo "$(GREEN)main.go 版本已更新$(NC)"
+	sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$$NEW_VERSION\"/" npm/package.json; \
+	echo "$(GREEN)main.go + npm/package.json 版本已更新到 $$NEW_VERSION$(NC)"
 
 push: _require_msg _update_version install package
 	@echo "$(YELLOW)提交并推送...$(NC)"
@@ -156,14 +160,16 @@ push: _require_msg _update_version install package
 		echo "$(GREEN)推送完成$(NC)"; \
 	fi
 	@echo "$(YELLOW)创建 GitHub Release...$(NC)"
-	@ZIP_PATH="$(BUILD_DIR)/$(APP_NAME)-v$(VERSION).tar.gz"; \
-	if [ ! -f "$$ZIP_PATH" ]; then \
-		echo "$(RED)错误: 未找到发布包 $$ZIP_PATH$(NC)"; \
+	@ARM64_PATH="$(BUILD_DIR)/$(APP_NAME)-darwin-arm64.tar.gz"; \
+	AMD64_PATH="$(BUILD_DIR)/$(APP_NAME)-darwin-amd64.tar.gz"; \
+	if [ ! -f "$$ARM64_PATH" ] || [ ! -f "$$AMD64_PATH" ]; then \
+		echo "$(RED)错误: 未找到 macOS 发布包$(NC)"; \
 		exit 1; \
 	fi; \
-	gh release create "v$(VERSION)" "$$ZIP_PATH" --title "iWC v$(VERSION)" --notes "$(MSG)"; \
-	echo "$(GREEN)已上传: $$ZIP_PATH$(NC)"; \
-	echo "$(GREEN)Release 创建完成: https://github.com/xdfnet/iWC/releases/tag/v$(VERSION)$(NC)"
+	gh release create "v$(VERSION)" "$$ARM64_PATH" "$$AMD64_PATH" --title "iWC v$(VERSION)" --notes "$(MSG)"; \
+	echo "$(GREEN)GitHub Release: https://github.com/xdfnet/iWC/releases/tag/v$(VERSION)$(NC)"
+	@echo "$(YELLOW)发布 npm...$(NC)"
+	@cd npm && npm publish && echo "$(GREEN)npm 发布完成: @xdfnet/iwc-cli@$(VERSION)$(NC)"
 
 # =============================================================================
 # 清理命令

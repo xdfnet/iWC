@@ -24,7 +24,7 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Claude.WorkDir != home {
 		t.Errorf("WorkDir = %q, want %q", cfg.Claude.WorkDir, home)
 	}
-	if cfg.System.DataDir != filepath.Join(home, ".iwc") {
+	if cfg.System.DataDir != filepath.Join(home, filepath.Join(".config", "iwc")) {
 		t.Errorf("DataDir = %q", cfg.System.DataDir)
 	}
 }
@@ -33,7 +33,7 @@ func TestConfigPath(t *testing.T) {
 	t.Setenv("IWC_CONFIG", "")
 	path := ConfigPath()
 	home, _ := os.UserHomeDir()
-	want := filepath.Join(home, ".iwc", "config.toml")
+	want := filepath.Join(home, filepath.Join(".config", "iwc"), "config.toml")
 	if path != want {
 		t.Errorf("ConfigPath = %q, want %q", path, want)
 	}
