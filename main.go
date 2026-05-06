@@ -21,10 +21,16 @@ import (
 	"github.com/admin/iCode/iWC/weixin"
 )
 
-const version = "1.0.14"
+const version = "1.1.0"
 
 func main() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
+
+	// launchd 启动时无参数直接运行服务
+	if os.Getenv("IWC_LAUNCHD") == "1" {
+		runService()
+		return
+	}
 
 	if len(os.Args) < 2 {
 		runStatus()
@@ -36,8 +42,6 @@ func main() {
 		runStatus()
 	case "setup":
 		doWechatSetup("", "", 480, "3")
-	case "start":
-		runService()
 	case "uninstall":
 		runUninstall()
 	case "version", "--version", "-v":
